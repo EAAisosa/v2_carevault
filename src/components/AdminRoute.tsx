@@ -1,0 +1,27 @@
+import { ReactNode } from "react";
+import { useRole } from "@/contexts/RoleContext";
+import { ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
+
+export default function AdminRoute({ children }: { children: ReactNode }) {
+  const { isAdmin } = useRole();
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 animate-fade-in">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+          <ShieldAlert size={28} className="text-destructive" />
+        </div>
+        <h2 className="text-lg font-semibold text-foreground">Access Restricted</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          This section is only available to NHRIRP Administrators. Switch to the Administrator role to access this page.
+        </p>
+        <Link to="/" className="text-sm font-medium text-primary hover:underline">
+          ← Back to Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
