@@ -11,7 +11,9 @@ import {
   X,
   ChevronRight,
   Database,
+  ArrowLeftRight,
 } from "lucide-react";
+import { useRole, type AppRole } from "@/contexts/RoleContext";
 
 interface NavItem {
   label: string;
@@ -31,6 +33,7 @@ const navItems: NavItem[] = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { role, setRole, isAdmin } = useRole();
 
   const clinicianNav = navItems.filter((n) => n.section === "clinician");
   const adminNav = navItems.filter((n) => n.section === "admin");
@@ -74,22 +77,35 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </p>
           <div className="space-y-1">{clinicianNav.map(renderNavItem)}</div>
         </div>
-        <div>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            Administration
-          </p>
-          <div className="space-y-1">{adminNav.map(renderNavItem)}</div>
-        </div>
+        {isAdmin && (
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Administration
+            </p>
+            <div className="space-y-1">{adminNav.map(renderNavItem)}</div>
+          </div>
+        )}
       </nav>
 
-      <div className="border-t border-sidebar-border px-4 py-4">
+      <div className="border-t border-sidebar-border px-4 py-3 space-y-3">
+        <button
+          onClick={() => setRole(role === "clinician" ? "administrator" : "clinician")}
+          className="flex w-full items-center gap-2 rounded-lg bg-sidebar-accent/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
+        >
+          <ArrowLeftRight size={12} />
+          Switch to {role === "clinician" ? "Admin" : "Clinician"}
+        </button>
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-sidebar-primary">
-            AO
+            {role === "clinician" ? "CO" : "AO"}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-sidebar-foreground">Admin Okonkwo</p>
-            <p className="truncate text-[10px] text-sidebar-foreground/50">NHRIRP Administrator</p>
+            <p className="truncate text-xs font-medium text-sidebar-foreground">
+              {role === "clinician" ? "Dr. Chinyere Obi" : "Admin Okonkwo"}
+            </p>
+            <p className="truncate text-[10px] text-sidebar-foreground/50">
+              {role === "clinician" ? "Clinician" : "NHRIRP Administrator"}
+            </p>
           </div>
         </div>
       </div>
