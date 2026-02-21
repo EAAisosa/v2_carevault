@@ -78,6 +78,10 @@ export interface StagingRecord {
   status: "pending" | "approved" | "rejected" | "needs-review";
   conflictType?: string;
   priority: "low" | "medium" | "high" | "critical";
+  summary: string;
+  practitioner: string;
+  flagged?: boolean;
+  adminNotes?: string;
 }
 
 export interface AuditLog {
@@ -194,12 +198,12 @@ export const labResults: LabResult[] = [
 ];
 
 export const stagingRecords: StagingRecord[] = [
-  { id: "stg-001", patientName: "Adebayo Ogundimu", nin: "12345678901", sourceHospital: "General Hospital Ikeja", dataType: "Encounter + Vitals", submittedAt: "2026-01-15T14:30:00Z", status: "pending", priority: "medium" },
-  { id: "stg-002", patientName: "Amina Ibrahim", nin: "98765432109", sourceHospital: "National Hospital Abuja", dataType: "Lab Results", submittedAt: "2026-01-14T09:15:00Z", status: "needs-review", conflictType: "Conflicting allergy data", priority: "high" },
-  { id: "stg-003", patientName: "Chukwuemeka Okafor", nin: "55566677788", sourceHospital: "University of Nigeria Teaching Hospital", dataType: "Medications", submittedAt: "2026-01-13T16:45:00Z", status: "approved", priority: "low" },
-  { id: "stg-004", patientName: "Fatima Abdullahi", nin: "33344455566", sourceHospital: "Aminu Kano Teaching Hospital", dataType: "Encounter + Diagnosis", submittedAt: "2026-01-15T08:00:00Z", status: "pending", conflictType: "Duplicate encounter suspected", priority: "critical" },
-  { id: "stg-005", patientName: "Oluwaseun Adeyemi", nin: "77788899900", sourceHospital: "University College Hospital Ibadan", dataType: "Vitals + Labs", submittedAt: "2026-01-12T11:20:00Z", status: "rejected", priority: "low" },
-  { id: "stg-006", patientName: "Adebayo Ogundimu", nin: "12345678901", sourceHospital: "National Hospital Abuja", dataType: "Allergy Update", submittedAt: "2026-01-15T10:00:00Z", status: "needs-review", conflictType: "New allergy contradicts existing record", priority: "high" },
+  { id: "stg-001", patientName: "Adebayo Ogundimu", nin: "12345678901", sourceHospital: "General Hospital Ikeja", dataType: "Encounter + Vitals", submittedAt: "2026-01-15T14:30:00Z", status: "pending", priority: "medium", summary: "Routine BP check — systolic 135, diastolic 88. Continued on Amlodipine 5mg.", practitioner: "Dr. Emeka Nwankwo" },
+  { id: "stg-002", patientName: "Amina Ibrahim", nin: "98765432109", sourceHospital: "National Hospital Abuja", dataType: "Lab Results", submittedAt: "2026-01-14T09:15:00Z", status: "needs-review", conflictType: "Conflicting allergy data", priority: "high", summary: "CBC and LFT results within normal range. New penicillin allergy documented — conflicts with existing record.", practitioner: "Dr. Aisha Mohammed" },
+  { id: "stg-003", patientName: "Chukwuemeka Okafor", nin: "55566677788", sourceHospital: "University of Nigeria Teaching Hospital", dataType: "Medications", submittedAt: "2026-01-13T16:45:00Z", status: "approved", priority: "low", summary: "Prescription refill for Metformin 500mg BD. No dosage changes.", practitioner: "Dr. Obi Eze" },
+  { id: "stg-004", patientName: "Fatima Abdullahi", nin: "33344455566", sourceHospital: "Aminu Kano Teaching Hospital", dataType: "Encounter + Diagnosis", submittedAt: "2026-01-15T08:00:00Z", status: "pending", conflictType: "Duplicate encounter suspected", priority: "critical", summary: "Emergency presentation with acute asthma exacerbation. Nebulised salbutamol administered. Possibly duplicates record from 14/01.", practitioner: "Dr. Musa Garba" },
+  { id: "stg-005", patientName: "Oluwaseun Adeyemi", nin: "77788899900", sourceHospital: "University College Hospital Ibadan", dataType: "Vitals + Labs", submittedAt: "2026-01-12T11:20:00Z", status: "rejected", priority: "low", summary: "Annual wellness check. All vitals within normal limits. Lipid panel satisfactory.", practitioner: "Dr. Funke Balogun" },
+  { id: "stg-006", patientName: "Adebayo Ogundimu", nin: "12345678901", sourceHospital: "National Hospital Abuja", dataType: "Allergy Update", submittedAt: "2026-01-15T10:00:00Z", status: "needs-review", conflictType: "New allergy contradicts existing record", priority: "high", summary: "Patient reported NSAID sensitivity (ibuprofen) causing bronchospasm — contradicts mild classification in existing record.", practitioner: "Dr. Ibrahim Musa" },
 ];
 
 export const auditLogs: AuditLog[] = [
