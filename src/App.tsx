@@ -11,6 +11,7 @@ import PatientSummary from "@/pages/PatientSummary";
 import StagingQueue from "@/pages/StagingQueue";
 import AuditLogs from "@/pages/AuditLogs";
 import ConnectorStatus from "@/pages/ConnectorStatus";
+import IntegratedRecords from "@/pages/IntegratedRecords";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
 
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/search" element={<PatientSearch />} />
               <Route path="/patient/:id" element={<PatientSummary />} />
               <Route path="/staging" element={<AdminRoute><StagingQueue /></AdminRoute>} />
+              <Route path="/integrated" element={<AdminRoute><IntegratedRecords /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute><AuditLogs /></AdminRoute>} />
               <Route path="/connectors" element={<AdminRoute><ConnectorStatus /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />

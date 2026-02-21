@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Users,
   GitMerge,
+  Archive,
   Shield,
   Activity,
   Menu,
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, section: "clinician" },
   { label: "Patient Search", path: "/search", icon: <Search size={18} />, section: "clinician" },
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, section: "admin" },
+  { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, section: "admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, section: "admin" },
   { label: "Connectors", path: "/connectors", icon: <Activity size={18} />, section: "admin" },
 ];
