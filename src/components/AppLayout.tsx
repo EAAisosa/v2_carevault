@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, section: "admin" },
   { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, section: "admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, section: "admin" },
-  { label: "Connectors", path: "/connectors", icon: <Activity size={18} />, section: "admin" },
+  // Connectors page reserved for back-end admin
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
