@@ -32,7 +32,7 @@ const App = () => (
               <Route path="/staging" element={<AdminRoute><StagingQueue /></AdminRoute>} />
               <Route path="/integrated" element={<AdminRoute><IntegratedRecords /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute><AuditLogs /></AdminRoute>} />
-              <Route path="/connectors" element={<AdminRoute><ConnectorStatus /></AdminRoute>} />
+              {/* Connectors route reserved for back-end admin */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
