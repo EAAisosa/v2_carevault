@@ -73,8 +73,7 @@ export default function StagingQueue() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">{r.patientName}</p>
-                  <StatusBadge status={r.priority} />
-                  <StatusBadge status={r.status} />
+                   <StatusBadge status={r.status} />
                   {r.flagged && (
                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-warning uppercase tracking-wider">
                       <Flag size={10} fill="currentColor" /> Flagged
@@ -152,8 +151,7 @@ export default function StagingQueue() {
                   <div><span className="text-muted-foreground">Source Facility</span><p className="mt-0.5">{selected.sourceHospital}</p></div>
                   <div><span className="text-muted-foreground">Data Type</span><p className="mt-0.5">{selected.dataType}</p></div>
                   <div><span className="text-muted-foreground">Practitioner</span><p className="mt-0.5">{selected.practitioner}</p></div>
-                  <div><span className="text-muted-foreground">Priority</span><div className="mt-0.5"><StatusBadge status={selected.priority} /></div></div>
-                  <div><span className="text-muted-foreground">Submitted</span><p className="font-mono mt-0.5">{new Date(selected.submittedAt).toLocaleString("en-NG")}</p></div>
+                   <div><span className="text-muted-foreground">Submitted</span><p className="font-mono mt-0.5">{new Date(selected.submittedAt).toLocaleString("en-NG")}</p></div>
                 </div>
 
                 <div>
