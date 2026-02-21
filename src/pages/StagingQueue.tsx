@@ -14,7 +14,8 @@ export default function StagingQueue() {
   const [flagTarget, setFlagTarget] = useState<StagingRecord | null>(null);
   const [noteText, setNoteText] = useState("");
 
-  const filtered = filter === "all" ? records : filter === "flagged" ? records.filter((r) => r.flagged) : records.filter((r) => r.status === filter);
+  const nonIntegrated = records.filter((r) => r.status !== "approved");
+  const filtered = filter === "all" ? nonIntegrated : filter === "flagged" ? nonIntegrated.filter((r) => r.flagged) : nonIntegrated.filter((r) => r.status === filter);
 
   const handleFlag = (record: StagingRecord) => {
     setFlagTarget(record);
