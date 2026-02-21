@@ -56,7 +56,7 @@ export default function StagingQueue() {
 
       <div className="flex items-center gap-2 flex-wrap">
         <Filter size={14} className="text-muted-foreground" />
-        {["all", "pending", "needs-review", "approved", "flagged"].map((f) => (
+        {["all", "pending", "needs-review", "flagged"].map((f) => (
           <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" onClick={() => setFilter(f)} className="capitalize text-xs">
             {f === "flagged" ? "🚩 Flagged" : f.replace("-", " ")}
           </Button>
