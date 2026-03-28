@@ -45,11 +45,9 @@ Deno.serve(async (req) => {
       // Only allow managing users in caller's own facility
       if (facility_id !== callerProfile.facility_id) throw new Error("Cannot manage users outside your facility");
 
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        password: crypto.randomUUID().slice(0, 16) + "Aa1!",
-        user_metadata: { full_name, facility_id, role: role || "clinician" },
+      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        data: { full_name, facility_id, role: role || "clinician" },
+        redirectTo: `${req.headers.get("origin") || "https://nhrirp.lovable.app"}/auth`,
       });
       if (createErr) throw createErr;
 
