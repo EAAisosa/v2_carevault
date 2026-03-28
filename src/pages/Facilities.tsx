@@ -27,7 +27,7 @@ export default function Facilities() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newFacility, setNewFacility] = useState({ name: "", location: "", state: "", ehr_system: "OpenMRS" });
+  const [newFacility, setNewFacility] = useState({ name: "", facility_code: "", location: "", state: "", ehr_system: "OpenMRS" });
   const [saving, setSaving] = useState(false);
 
   const fetchFacilities = async () => {
@@ -47,13 +47,14 @@ export default function Facilities() {
   useEffect(() => { fetchFacilities(); }, []);
 
   const handleAddFacility = async () => {
-    if (!newFacility.name || !newFacility.location || !newFacility.state) {
+    if (!newFacility.name || !newFacility.facility_code || !newFacility.location || !newFacility.state) {
       toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
     setSaving(true);
     const { error } = await supabase.from("facilities").insert({
       name: newFacility.name,
+      facility_code: newFacility.facility_code,
       location: newFacility.location,
       state: newFacility.state,
       ehr_system: newFacility.ehr_system,
@@ -62,7 +63,7 @@ export default function Facilities() {
       toast({ title: "Error adding facility", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Facility added", description: `${newFacility.name} has been onboarded.` });
-      setNewFacility({ name: "", location: "", state: "", ehr_system: "OpenMRS" });
+      setNewFacility({ name: "", facility_code: "", location: "", state: "", ehr_system: "OpenMRS" });
       setDialogOpen(false);
       fetchFacilities();
     }
@@ -90,6 +91,10 @@ export default function Facilities() {
               <DialogTitle>Onboard New Facility</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Facility ID</Label>
+                <Input placeholder="e.g. FMC-ABJ-001" value={newFacility.facility_code} onChange={(e) => setNewFacility({ ...newFacility, facility_code: e.target.value })} />
+              </div>
               <div className="space-y-2">
                 <Label>Hospital Name</Label>
                 <Input placeholder="e.g. Lagos University Teaching Hospital" value={newFacility.name} onChange={(e) => setNewFacility({ ...newFacility, name: e.target.value })} />
