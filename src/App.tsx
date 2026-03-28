@@ -12,6 +12,7 @@ import StagingQueue from "@/pages/StagingQueue";
 import AuditLogs from "@/pages/AuditLogs";
 import IntegratedRecords from "@/pages/IntegratedRecords";
 import Facilities from "@/pages/Facilities";
+import UserManagement from "@/pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
 import Auth from "@/pages/Auth";
@@ -71,6 +72,7 @@ const AppRoutes = () => (
               <Route path="/integrated" element={<AdminRoute><IntegratedRecords /></AdminRoute>} />
               <Route path="/facilities" element={<AdminRoute><Facilities /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute><AuditLogs /></AdminRoute>} />
+              <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
