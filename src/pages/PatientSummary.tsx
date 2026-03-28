@@ -1,41 +1,92 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Shield, AlertTriangle } from "lucide-react";
-import { patients, encounters, vitals, medications, allergies, labResults } from "@/data/mockData";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Shield, AlertTriangle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { encounters, vitals, medications, allergies, labResults } from "@/data/mockData";
 import PatientTimeline from "@/components/PatientTimeline";
 import VitalsChart from "@/components/VitalsChart";
 import DataSourceBadge from "@/components/DataSourceBadge";
 import StatusBadge from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+interface PatientDetail {
+  id: string;
+  nin: string;
+  first_name: string;
+  last_name: string;
+  gender: string;
+  date_of_birth: string;
+  phone: string | null;
+  blood_group: string | null;
+  genotype: string | null;
+  lga: string | null;
+  state: string | null;
+  facility_name?: string;
+}
+
 export default function PatientSummary() {
   const { id } = useParams();
-  const patient = patients.find((p) => p.id === id) || patients[0];
+  const [patient, setPatient] = useState<PatientDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPatient = async () => {
+      const { data, error } = await supabase
+        .from("patients")
+        .select("*, facilities(name)")
+        .eq("id", id)
+        .single();
+      if (!error && data) {
+        setPatient({ ...data, facility_name: (data as any).facilities?.name || "Unknown" } as PatientDetail);
+      }
+      setLoading(false);
+    };
+    if (id) fetchPatient();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-foreground font-medium">Patient not found</p>
+        <Link to="/search" className="text-sm text-primary hover:underline mt-2 inline-block">← Back to Search</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-start gap-4">
         <Link to="/search" className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={16} />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{patient.firstName} {patient.lastName}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{patient.first_name} {patient.last_name}</h1>
             <span className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
               <Shield size={10} /> Read-Only
             </span>
           </div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="font-mono">NIN: {patient.nin}</span>
-            <span>{patient.gender === "male" ? "♂ Male" : "♀ Female"}</span>
-            <span>DOB: {patient.dateOfBirth}</span>
-            <span>🩸 {patient.bloodGroup} / {patient.genotype}</span>
-            <span>📞 {patient.phone}</span>
+            <span>{patient.gender === "Male" ? "♂ Male" : "♀ Female"}</span>
+            <span>DOB: {patient.date_of_birth}</span>
+            {patient.blood_group && <span>🩸 {patient.blood_group} / {patient.genotype}</span>}
+            {patient.phone && <span>📞 {patient.phone}</span>}
           </div>
+          {patient.facility_name && (
+            <p className="mt-1 text-xs text-muted-foreground">Registered at: {patient.facility_name}</p>
+          )}
         </div>
       </div>
 
-      {/* Alert banner for allergies */}
       <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
         <AlertTriangle size={16} className="text-destructive flex-shrink-0" />
         <div>
@@ -46,7 +97,6 @@ export default function PatientSummary() {
         </div>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="timeline" className="space-y-4">
         <TabsList>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>

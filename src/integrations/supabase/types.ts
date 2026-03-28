@@ -14,6 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      facilities: {
+        Row: {
+          created_at: string
+          ehr_system: string
+          id: string
+          last_sync: string | null
+          location: string
+          name: string
+          records_count: number
+          state: string
+          status: Database["public"]["Enums"]["facility_status"]
+          updated_at: string
+          uptime: number
+        }
+        Insert: {
+          created_at?: string
+          ehr_system?: string
+          id?: string
+          last_sync?: string | null
+          location: string
+          name: string
+          records_count?: number
+          state: string
+          status?: Database["public"]["Enums"]["facility_status"]
+          updated_at?: string
+          uptime?: number
+        }
+        Update: {
+          created_at?: string
+          ehr_system?: string
+          id?: string
+          last_sync?: string | null
+          location?: string
+          name?: string
+          records_count?: number
+          state?: string
+          status?: Database["public"]["Enums"]["facility_status"]
+          updated_at?: string
+          uptime?: number
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          blood_group: string | null
+          created_at: string
+          date_of_birth: string
+          facility_id: string | null
+          first_name: string
+          gender: string
+          genotype: string | null
+          id: string
+          last_name: string
+          lga: string | null
+          nin: string
+          phone: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          blood_group?: string | null
+          created_at?: string
+          date_of_birth: string
+          facility_id?: string | null
+          first_name: string
+          gender: string
+          genotype?: string | null
+          id?: string
+          last_name: string
+          lga?: string | null
+          nin: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          blood_group?: string | null
+          created_at?: string
+          date_of_birth?: string
+          facility_id?: string | null
+          first_name?: string
+          gender?: string
+          genotype?: string | null
+          id?: string
+          last_name?: string
+          lga?: string | null
+          nin?: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -72,6 +173,7 @@ export type Database = {
     }
     Enums: {
       app_role: "clinician" | "administrator"
+      facility_status: "online" | "degraded" | "offline"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -200,6 +302,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["clinician", "administrator"],
+      facility_status: ["online", "degraded", "offline"],
     },
   },
 } as const
