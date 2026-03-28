@@ -1,36 +1,85 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, User, AlertCircle } from "lucide-react";
+import { Search, User, AlertCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { patients } from "@/data/mockData";
-import type { Patient } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+
+interface PatientResult {
+  id: string;
+  nin: string;
+  first_name: string;
+  last_name: string;
+  gender: string;
+  date_of_birth: string;
+  phone: string | null;
+  blood_group: string | null;
+  genotype: string | null;
+  lga: string | null;
+  state: string | null;
+  facility_id: string | null;
+  facility_name?: string;
+  matchConfidence?: number;
+}
 
 export default function PatientSearch() {
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState<"nin" | "demographics">("nin");
-  const [results, setResults] = useState<Patient[]>([]);
+  const [results, setResults] = useState<PatientResult[]>([]);
   const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [demoFields, setDemoFields] = useState({ firstName: "", lastName: "", dob: "", phone: "", gender: "" });
   const navigate = useNavigate();
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setSearched(true);
-    if (searchType === "nin") {
-      setResults(patients.filter((p) => p.nin.includes(query)));
-    } else {
-      setResults(
-        patients.filter((p) => {
-          let score = 0;
-          if (demoFields.firstName && p.firstName.toLowerCase().includes(demoFields.firstName.toLowerCase())) score++;
-          if (demoFields.lastName && p.lastName.toLowerCase().includes(demoFields.lastName.toLowerCase())) score++;
-          if (demoFields.dob && p.dateOfBirth === demoFields.dob) score++;
-          if (demoFields.phone && p.phone.includes(demoFields.phone)) score++;
-          if (demoFields.gender && p.gender === demoFields.gender) score++;
-          return score >= 2;
-        }).map((p) => ({ ...p, matchConfidence: 85 + Math.floor(Math.random() * 15) }))
-      );
+    setLoading(true);
+
+    try {
+      if (searchType === "nin") {
+        const { data, error } = await supabase
+          .from("patients")
+          .select("*, facilities(name)")
+          .ilike("nin", `%${query}%`);
+        if (error) throw error;
+        setResults(
+          (data || []).map((p: any) => ({
+            ...p,
+            facility_name: p.facilities?.name || "Unknown",
+          }))
+        );
+      } else {
+        // Demographic search — query broadly, score client-side
+        let q = supabase.from("patients").select("*, facilities(name)");
+
+        // Apply at least one server-side filter for efficiency
+        if (demoFields.lastName) q = q.ilike("last_name", `%${demoFields.lastName}%`);
+        else if (demoFields.firstName) q = q.ilike("first_name", `%${demoFields.firstName}%`);
+        else if (demoFields.phone) q = q.ilike("phone", `%${demoFields.phone}%`);
+
+        const { data, error } = await q.limit(100);
+        if (error) throw error;
+
+        const scored = (data || [])
+          .map((p: any) => {
+            let score = 0;
+            if (demoFields.firstName && p.first_name.toLowerCase().includes(demoFields.firstName.toLowerCase())) score++;
+            if (demoFields.lastName && p.last_name.toLowerCase().includes(demoFields.lastName.toLowerCase())) score++;
+            if (demoFields.dob && p.date_of_birth === demoFields.dob) score++;
+            if (demoFields.phone && p.phone?.includes(demoFields.phone)) score++;
+            if (demoFields.gender && p.gender === demoFields.gender) score++;
+            return { ...p, facility_name: p.facilities?.name || "Unknown", matchConfidence: Math.min(100, 70 + score * 8), _score: score };
+          })
+          .filter((p: any) => p._score >= 2)
+          .sort((a: any, b: any) => b._score - a._score);
+
+        setResults(scored);
+      }
+    } catch (err: any) {
+      console.error("Search error:", err);
+      setResults([]);
     }
+    setLoading(false);
   };
 
   return (
@@ -40,20 +89,11 @@ export default function PatientSearch() {
         <p className="text-sm text-muted-foreground">Search the national health records by NIN or demographics</p>
       </div>
 
-      {/* Search type toggle */}
       <div className="flex gap-2">
-        <Button
-          variant={searchType === "nin" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSearchType("nin")}
-        >
+        <Button variant={searchType === "nin" ? "default" : "outline"} size="sm" onClick={() => setSearchType("nin")}>
           Search by NIN
         </Button>
-        <Button
-          variant={searchType === "demographics" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSearchType("demographics")}
-        >
+        <Button variant={searchType === "demographics" ? "default" : "outline"} size="sm" onClick={() => setSearchType("demographics")}>
           Search by Demographics
         </Button>
       </div>
@@ -71,7 +111,9 @@ export default function PatientSearch() {
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
             </div>
-            <Button onClick={handleSearch}>Search</Button>
+            <Button onClick={handleSearch} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -88,10 +130,12 @@ export default function PatientSearch() {
                 onChange={(e) => setDemoFields({ ...demoFields, gender: e.target.value })}
               >
                 <option value="">Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
               </select>
-              <Button onClick={handleSearch}>Search</Button>
+              <Button onClick={handleSearch} disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+              </Button>
             </div>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <AlertCircle size={12} />
@@ -101,13 +145,12 @@ export default function PatientSearch() {
         )}
       </div>
 
-      {/* Results */}
       {searched && (
         <div className="space-y-3 animate-slide-up">
           <p className="text-sm text-muted-foreground">
-            {results.length} result{results.length !== 1 ? "s" : ""} found
+            {loading ? "Searching…" : `${results.length} result${results.length !== 1 ? "s" : ""} found`}
           </p>
-          {results.length === 0 ? (
+          {!loading && results.length === 0 ? (
             <div className="elevated-card rounded-xl p-8 text-center">
               <User size={40} className="mx-auto text-muted-foreground/30" />
               <p className="mt-3 text-sm font-medium text-foreground">No patient found</p>
@@ -124,15 +167,15 @@ export default function PatientSearch() {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-base font-semibold text-foreground">{p.firstName} {p.lastName}</p>
+                    <p className="text-base font-semibold text-foreground">{p.first_name} {p.last_name}</p>
                     <p className="text-xs text-muted-foreground font-mono mt-0.5">NIN: {p.nin}</p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>{p.gender === "male" ? "♂" : "♀"} {p.gender}</span>
-                      <span>DOB: {p.dateOfBirth}</span>
-                      <span>📞 {p.phone}</span>
-                      <span>🩸 {p.bloodGroup} / {p.genotype}</span>
+                      <span>{p.gender === "Male" ? "♂" : "♀"} {p.gender}</span>
+                      <span>DOB: {p.date_of_birth}</span>
+                      {p.phone && <span>📞 {p.phone}</span>}
+                      {p.blood_group && <span>🩸 {p.blood_group} / {p.genotype}</span>}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{p.address}, {p.state}</p>
+                    {p.lga && <p className="mt-1 text-xs text-muted-foreground">{p.lga}, {p.state}</p>}
                   </div>
                   <div className="text-right flex-shrink-0">
                     {p.matchConfidence && (
@@ -141,7 +184,7 @@ export default function PatientSearch() {
                       </span>
                     )}
                     <p className="text-[10px] text-muted-foreground mt-1">Registered at</p>
-                    <p className="text-xs font-medium text-foreground">{p.registeredHospital}</p>
+                    <p className="text-xs font-medium text-foreground">{p.facility_name}</p>
                   </div>
                 </div>
               </button>
