@@ -121,23 +121,34 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          facility_id: string | null
           full_name: string
           id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          facility_id?: string | null
           full_name?: string
           id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          facility_id?: string | null
           full_name?: string
           id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
