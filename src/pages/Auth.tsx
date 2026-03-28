@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, Shield, Stethoscope, Loader2 } from "lucide-react";
+import { Database, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type AuthMode = "login" | "signup";
@@ -17,7 +16,7 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"clinician" | "administrator">("clinician");
+  
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,7 +29,7 @@ export default function Auth() {
           email,
           password,
           options: {
-            data: { full_name: fullName, role },
+            data: { full_name: fullName },
             emailRedirectTo: window.location.origin,
           },
         });
@@ -116,39 +115,6 @@ export default function Auth() {
                 />
               </div>
 
-              {mode === "signup" && (
-                <div className="space-y-3">
-                  <Label>Select Your Role</Label>
-                  <RadioGroup value={role} onValueChange={(v) => setRole(v as "clinician" | "administrator")}>
-                    <div
-                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                        role === "clinician" ? "border-primary bg-primary/5" : "border-border"
-                      }`}
-                      onClick={() => setRole("clinician")}
-                    >
-                      <RadioGroupItem value="clinician" id="clinician" />
-                      <Stethoscope size={18} className="text-primary" />
-                      <div>
-                        <Label htmlFor="clinician" className="cursor-pointer font-medium">Clinician</Label>
-                        <p className="text-xs text-muted-foreground">Search patients, view records & summaries</p>
-                      </div>
-                    </div>
-                    <div
-                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                        role === "administrator" ? "border-primary bg-primary/5" : "border-border"
-                      }`}
-                      onClick={() => setRole("administrator")}
-                    >
-                      <RadioGroupItem value="administrator" id="administrator" />
-                      <Shield size={18} className="text-accent" />
-                      <div>
-                        <Label htmlFor="administrator" className="cursor-pointer font-medium">Administrator</Label>
-                        <p className="text-xs text-muted-foreground">Full access: staging, audit logs & records management</p>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="animate-spin" />}
