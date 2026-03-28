@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 interface Facility {
   id: string;
   name: string;
+  facility_code: string | null;
   location: string;
   state: string;
   ehr_system: string;
@@ -164,6 +165,7 @@ export default function Facilities() {
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">{f.name}</h3>
                     <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin size={10} /> {f.location}</p>
+                    {f.facility_code && <p className="text-[10px] font-mono text-muted-foreground">ID: {f.facility_code}</p>}
                   </div>
                 </div>
                 <StatusBadge status={f.status} />
