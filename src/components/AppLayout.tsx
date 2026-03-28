@@ -3,18 +3,15 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Search,
   LayoutDashboard,
-  Users,
   GitMerge,
   Archive,
   Shield,
-  Activity,
   Menu,
-  X,
   ChevronRight,
   Database,
-  ArrowLeftRight,
+  LogOut,
 } from "lucide-react";
-import { useRole, type AppRole } from "@/contexts/RoleContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   label: string;
@@ -29,16 +26,20 @@ const navItems: NavItem[] = [
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, section: "admin" },
   { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, section: "admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, section: "admin" },
-  // Connectors page reserved for back-end admin
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { role, setRole, isAdmin } = useRole();
+  const { role, isAdmin, fullName, signOut, user } = useAuth();
 
   const clinicianNav = navItems.filter((n) => n.section === "clinician");
   const adminNav = navItems.filter((n) => n.section === "admin");
+
+  const displayName = fullName || user?.email || "User";
+  const initials = fullName
+    ? fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    : "U";
 
   const renderNavItem = (item: NavItem) => {
     const active = location.pathname === item.path;
@@ -91,20 +92,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="border-t border-sidebar-border px-4 py-3 space-y-3">
         <button
-          onClick={() => setRole(role === "clinician" ? "administrator" : "clinician")}
+          onClick={signOut}
           className="flex w-full items-center gap-2 rounded-lg bg-sidebar-accent/50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
         >
-          <ArrowLeftRight size={12} />
-          Switch to {role === "clinician" ? "Admin" : "Clinician"}
+          <LogOut size={12} />
+          Sign Out
         </button>
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-sidebar-primary">
-            {role === "clinician" ? "CO" : "AO"}
+            {initials}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-sidebar-foreground">
-              {role === "clinician" ? "Dr. Chinyere Obi" : "Admin Okonkwo"}
-            </p>
+            <p className="truncate text-xs font-medium text-sidebar-foreground">{displayName}</p>
             <p className="truncate text-[10px] text-sidebar-foreground/50">
               {role === "clinician" ? "Clinician" : "NHRIRP Administrator"}
             </p>
@@ -116,10 +115,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop sidebar */}
       <aside className="hidden w-64 flex-shrink-0 lg:block">{sidebarContent}</aside>
 
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-foreground/30" onClick={() => setSidebarOpen(false)} />
@@ -127,7 +124,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Main content */}
       <main className="flex-1 overflow-auto">
         <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/80 px-4 py-3 backdrop-blur-sm lg:px-8">
           <button className="lg:hidden" onClick={() => setSidebarOpen(true)}>

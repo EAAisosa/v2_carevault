@@ -1,10 +1,10 @@
 import { ReactNode } from "react";
-import { useRole } from "@/contexts/RoleContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function AdminRoute({ children }: { children: ReactNode }) {
-  const { isAdmin } = useRole();
+  const { isAdmin } = useAuth();
 
   if (!isAdmin) {
     return (
@@ -14,7 +14,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
         </div>
         <h2 className="text-lg font-semibold text-foreground">Access Restricted</h2>
         <p className="text-sm text-muted-foreground max-w-md">
-          This section is only available to NHRIRP Administrators. Switch to the Administrator role to access this page.
+          This section is only available to NHRIRP Administrators.
         </p>
         <Link to="/" className="text-sm font-medium text-primary hover:underline">
           ← Back to Dashboard

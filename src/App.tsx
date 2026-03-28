@@ -2,28 +2,65 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
-import { RoleProvider } from "@/contexts/RoleContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/pages/Dashboard";
 import PatientSearch from "@/pages/PatientSearch";
 import PatientSummary from "@/pages/PatientSummary";
 import StagingQueue from "@/pages/StagingQueue";
 import AuditLogs from "@/pages/AuditLogs";
-import ConnectorStatus from "@/pages/ConnectorStatus";
 import IntegratedRecords from "@/pages/IntegratedRecords";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
+import Auth from "@/pages/Auth";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <RoleProvider>
-        <BrowserRouter>
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (session) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+    <Route
+      path="/*"
+      element={
+        <ProtectedRoute>
           <AppLayout>
             <Routes>
               <Route path="/" element={<Dashboard />} />
@@ -32,12 +69,25 @@ const App = () => (
               <Route path="/staging" element={<AdminRoute><StagingQueue /></AdminRoute>} />
               <Route path="/integrated" element={<AdminRoute><IntegratedRecords /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute><AuditLogs /></AdminRoute>} />
-              {/* Connectors route reserved for back-end admin */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
+        </ProtectedRoute>
+      }
+    />
+  </Routes>
+);
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
         </BrowserRouter>
-      </RoleProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
