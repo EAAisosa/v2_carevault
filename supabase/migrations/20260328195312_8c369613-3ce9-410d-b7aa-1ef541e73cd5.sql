@@ -1,0 +1,1 @@
+ALTER TABLE public.facilities ADD COLUMN facility_code text UNIQUE;

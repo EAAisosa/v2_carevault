@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           ehr_system: string
+          facility_code: string | null
           id: string
           last_sync: string | null
           location: string
@@ -31,6 +32,7 @@ export type Database = {
         Insert: {
           created_at?: string
           ehr_system?: string
+          facility_code?: string | null
           id?: string
           last_sync?: string | null
           location: string
@@ -44,6 +46,7 @@ export type Database = {
         Update: {
           created_at?: string
           ehr_system?: string
+          facility_code?: string | null
           id?: string
           last_sync?: string | null
           location?: string
