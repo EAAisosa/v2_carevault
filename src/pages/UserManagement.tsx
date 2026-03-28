@@ -113,7 +113,7 @@ export default function UserManagement() {
         role: inviteForm.role,
         facility_id: facilityId,
       });
-      toast({ title: "User invited", description: `${inviteForm.email} has been added.` });
+      toast({ title: "Invitation sent", description: `An invite email has been sent to ${inviteForm.email}.` });
       setInviteOpen(false);
       setInviteForm({ email: "", full_name: "", role: "clinician" });
       fetchUsers();
@@ -236,7 +236,7 @@ export default function UserManagement() {
                 </div>
                 <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name} className="w-full">
                   {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                  {inviting ? "Creating..." : "Create User"}
+                  {inviting ? "Sending Invite..." : "Send Invite Email"}
                 </Button>
               </div>
             </DialogContent>

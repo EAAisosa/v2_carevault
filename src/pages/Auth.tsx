@@ -8,15 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Database, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-type AuthMode = "login" | "signup";
-
 export default function Auth() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,22 +19,9 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created! Check your email to confirm, or log in if email confirmation is disabled.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Signed in successfully");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Signed in successfully");
       navigate("/");
     } catch (err: any) {
       toast.error(err.message || "Authentication failed");
@@ -66,30 +48,13 @@ export default function Auth() {
 
         <Card className="border-border/50 shadow-md">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-lg">
-              {mode === "login" ? "Sign In" : "Create Account"}
-            </CardTitle>
+            <CardTitle className="text-lg">Sign In</CardTitle>
             <CardDescription>
-              {mode === "login"
-                ? "Enter your credentials to access the platform"
-                : "Register for a new NHRIRP account"}
+              Enter your credentials to access the platform
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {mode === "signup" && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Dr. Chinyere Obi"
-                    required
-                  />
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -115,22 +80,15 @@ export default function Auth() {
                 />
               </div>
 
-
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="animate-spin" />}
-                {mode === "login" ? "Sign In" : "Create Account"}
+                Sign In
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                className="text-sm text-primary hover:underline"
-              >
-                {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-              </button>
-            </div>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              Contact your facility administrator to request access
+            </p>
           </CardContent>
         </Card>
 
