@@ -3,10 +3,10 @@ import StatsCard from "@/components/StatsCard";
 import { dashboardStats, stagingRecords, hospitalConnectors, auditLogs } from "@/data/mockData";
 import StatusBadge from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
-import { useRole } from "@/contexts/RoleContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
-  const { isAdmin } = useRole();
+  const { isAdmin } = useAuth();
   const recentStaging = stagingRecords.filter((s) => s.status === "pending" || s.status === "needs-review").slice(0, 4);
   const recentAudit = auditLogs.slice(0, 5);
   const connectorsSummary = hospitalConnectors.slice(0, 5);
