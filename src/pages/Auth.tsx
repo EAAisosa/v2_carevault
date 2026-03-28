@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, Shield, Stethoscope, Loader2 } from "lucide-react";
+import { Database, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type AuthMode = "login" | "signup";
