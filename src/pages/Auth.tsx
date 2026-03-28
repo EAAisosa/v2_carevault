@@ -30,7 +30,7 @@ export default function Auth() {
           email,
           password,
           options: {
-            data: { full_name: fullName, role },
+            data: { full_name: fullName },
             emailRedirectTo: window.location.origin,
           },
         });
