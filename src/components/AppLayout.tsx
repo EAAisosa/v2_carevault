@@ -6,6 +6,7 @@ import {
   GitMerge,
   Archive,
   Shield,
+  Building2,
   Menu,
   ChevronRight,
   Database,
@@ -25,6 +26,7 @@ const navItems: NavItem[] = [
   { label: "Patient Search", path: "/search", icon: <Search size={18} />, section: "clinician" },
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, section: "admin" },
   { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, section: "admin" },
+  { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, section: "admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, section: "admin" },
 ];
 
