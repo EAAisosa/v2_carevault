@@ -162,6 +162,30 @@ export default function UserManagement() {
     }
   };
 
+  const handleResetPassword = async (userId: string, email: string) => {
+    setActionLoading(userId);
+    try {
+      const data = await callManageUsers("reset_password", { user_id: userId });
+      toast({ title: "Password reset sent", description: data.message || `Reset link sent to ${email}` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResendInvite = async (userId: string, email: string) => {
+    setActionLoading(userId);
+    try {
+      const data = await callManageUsers("resend_invite", { user_id: userId });
+      toast({ title: "Invite resent", description: data.message || `Invite resent to ${email}` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDelete = async (userId: string, email: string) => {
     if (!confirm(`Permanently delete user ${email}? This cannot be undone.`)) return;
     setActionLoading(userId);
