@@ -37,7 +37,7 @@ export default function Auth() {
         {/* Branding */}
         <div className="text-center">
           <div className="flex justify-center">
-            <img src={carevaultLogo} alt="CareVault Logo" className="h-20 object-contain" />
+            <img src={carevaultLogo} alt="CareVault Logo" className="h-36 object-contain" />
           </div>
         </div>
 
