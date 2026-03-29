@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: { full_name, facility_id, role: role || "clinician" },
-        redirectTo: `${req.headers.get("origin") || "https://nhrirp.lovable.app"}/auth`,
+        redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/auth`,
       });
       if (createErr) throw createErr;
 
