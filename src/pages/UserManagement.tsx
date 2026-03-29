@@ -27,6 +27,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus,
@@ -38,6 +45,9 @@ import {
   Loader2,
   Users,
   RefreshCw,
+  MoreHorizontal,
+  KeyRound,
+  Mail,
 } from "lucide-react";
 
 interface ManagedUser {
@@ -46,6 +56,8 @@ interface ManagedUser {
   email: string;
   role: string;
   banned: boolean;
+  confirmed: boolean;
+  last_sign_in: string | null;
   created_at: string;
 }
 
