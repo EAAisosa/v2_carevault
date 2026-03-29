@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, RefreshCw, Building2, MapPin, Plus } from "lucide-react";
+import { RefreshCw, Building2, MapPin, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import StatusBadge from "@/components/StatusBadge";
@@ -22,6 +22,32 @@ interface Facility {
   records_count: number;
   last_sync: string | null;
   created_at: string;
+}
+function SyncButton({ facilityId, onSynced }: { facilityId: string; onSynced: () => void }) {
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("simulate-ehr-sync", {
+        body: { facility_id: facilityId },
+      });
+      if (res.error) throw res.error;
+      const result = res.data;
+      toast({ title: "EHR Sync Complete", description: `${result.records_synced} records pulled into staging queue.` });
+      onSynced();
+    } catch (err: any) {
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
+    }
+    setSyncing(false);
+  };
+
+  return (
+    <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleSync} disabled={syncing}>
+      {syncing ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />} {syncing ? "Syncing…" : "Sync"}
+    </Button>
+  );
 }
 
 export default function Facilities() {
@@ -193,9 +219,7 @@ export default function Facilities() {
                   <span className="text-[10px] text-muted-foreground font-mono">
                     {f.last_sync ? `Last sync: ${new Date(f.last_sync).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Never synced"}
                   </span>
-                  <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1">
-                    <RefreshCw size={10} /> Sync
-                  </Button>
+                  <SyncButton facilityId={f.id} onSynced={fetchFacilities} />
                 </div>
               </div>
             </div>
