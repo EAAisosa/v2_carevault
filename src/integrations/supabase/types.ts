@@ -150,6 +150,77 @@ export type Database = {
           },
         ]
       }
+      staged_records: {
+        Row: {
+          admin_notes: string | null
+          conflict_type: string | null
+          created_at: string
+          data_type: string
+          fhir_payload: Json | null
+          fhir_resource_type: string | null
+          flagged: boolean
+          id: string
+          nin: string
+          patient_name: string
+          practitioner: string
+          priority: string
+          source_facility_id: string | null
+          source_facility_name: string
+          status: string
+          submitted_at: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          conflict_type?: string | null
+          created_at?: string
+          data_type: string
+          fhir_payload?: Json | null
+          fhir_resource_type?: string | null
+          flagged?: boolean
+          id?: string
+          nin: string
+          patient_name: string
+          practitioner: string
+          priority?: string
+          source_facility_id?: string | null
+          source_facility_name: string
+          status?: string
+          submitted_at?: string
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          conflict_type?: string | null
+          created_at?: string
+          data_type?: string
+          fhir_payload?: Json | null
+          fhir_resource_type?: string | null
+          flagged?: boolean
+          id?: string
+          nin?: string
+          patient_name?: string
+          practitioner?: string
+          priority?: string
+          source_facility_id?: string | null
+          source_facility_name?: string
+          status?: string
+          submitted_at?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staged_records_source_facility_id_fkey"
+            columns: ["source_facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
