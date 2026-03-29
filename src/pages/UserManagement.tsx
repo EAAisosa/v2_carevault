@@ -27,6 +27,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus,
@@ -38,6 +45,9 @@ import {
   Loader2,
   Users,
   RefreshCw,
+  MoreHorizontal,
+  KeyRound,
+  Mail,
 } from "lucide-react";
 
 interface ManagedUser {
@@ -46,6 +56,8 @@ interface ManagedUser {
   email: string;
   role: string;
   banned: boolean;
+  confirmed: boolean;
+  last_sign_in: string | null;
   created_at: string;
 }
 
@@ -143,6 +155,30 @@ export default function UserManagement() {
       await callManageUsers(currentlyBanned ? "activate" : "deactivate", { user_id: userId });
       toast({ title: currentlyBanned ? "User activated" : "User deactivated" });
       fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResetPassword = async (userId: string, email: string) => {
+    setActionLoading(userId);
+    try {
+      const data = await callManageUsers("reset_password", { user_id: userId });
+      toast({ title: "Password reset sent", description: data.message || `Reset link sent to ${email}` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResendInvite = async (userId: string, email: string) => {
+    setActionLoading(userId);
+    try {
+      const data = await callManageUsers("resend_invite", { user_id: userId });
+      toast({ title: "Invite resent", description: data.message || `Invite resent to ${email}` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -262,6 +298,7 @@ export default function UserManagement() {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Last Login</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -297,9 +334,16 @@ export default function UserManagement() {
                   <TableCell>
                     {u.banned ? (
                       <Badge variant="destructive" className="text-xs">Deactivated</Badge>
+                    ) : !u.confirmed ? (
+                      <Badge variant="outline" className="text-xs text-warning border-warning/30">Pending Invite</Badge>
                     ) : (
                       <Badge className="bg-accent text-accent-foreground text-xs">Active</Badge>
                     )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {u.last_sign_in
+                      ? new Date(u.last_sign_in).toLocaleDateString()
+                      : "Never"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(u.created_at).toLocaleDateString()}
@@ -310,26 +354,37 @@ export default function UserManagement() {
                         {actionLoading === u.id ? (
                           <Loader2 size={14} className="animate-spin text-muted-foreground" />
                         ) : (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              title={u.banned ? "Activate" : "Deactivate"}
-                              onClick={() => handleToggleBan(u.id, u.banned)}
-                            >
-                              {u.banned ? <CheckCircle size={14} className="text-accent" /> : <Ban size={14} className="text-destructive" />}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              title="Delete user"
-                              onClick={() => handleDelete(u.id, u.email)}
-                            >
-                              <Trash2 size={14} className="text-destructive" />
-                            </Button>
-                          </>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal size={14} />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleResetPassword(u.id, u.email)}>
+                                <KeyRound size={14} className="mr-2" /> Reset Password
+                              </DropdownMenuItem>
+                              {!u.confirmed && (
+                                <DropdownMenuItem onClick={() => handleResendInvite(u.id, u.email)}>
+                                  <Mail size={14} className="mr-2" /> Resend Invite
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => handleToggleBan(u.id, u.banned)}>
+                                {u.banned ? (
+                                  <><CheckCircle size={14} className="mr-2" /> Activate</>
+                                ) : (
+                                  <><Ban size={14} className="mr-2 text-destructive" /> Deactivate</>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDelete(u.id, u.email)}
+                              >
+                                <Trash2 size={14} className="mr-2" /> Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                     )}
