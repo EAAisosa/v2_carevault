@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import carevaultLogo from "@/assets/carevault-logo.png";
 import { toast } from "sonner";
 
 export default function Auth() {
@@ -34,16 +35,10 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Branding */}
-        <div className="text-center space-y-2">
+        <div className="text-center">
           <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl gradient-primary shadow-lg">
-              <Database size={28} className="text-primary-foreground" />
-            </div>
+            <img src={carevaultLogo} alt="CareVault Logo" className="h-20 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">CareVault</h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">
-            Secure Health Records Platform
-          </p>
         </div>
 
         <Card className="border-border/50 shadow-md">

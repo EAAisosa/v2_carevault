@@ -10,9 +10,9 @@ import {
   Users,
   Menu,
   ChevronRight,
-  Database,
   LogOut,
 } from "lucide-react";
+import carevaultLogo from "@/assets/carevault-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
@@ -67,14 +67,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const sidebarContent = (
     <div className="flex h-full flex-col" style={{ background: "var(--gradient-sidebar)" }}>
-      <div className="flex items-center gap-3 px-5 py-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-          <Database size={18} className="text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-wide">CareVault</h1>
-          <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">Health Records Platform</p>
-        </div>
+      <div className="flex items-center px-4 py-5">
+        <img src={carevaultLogo} alt="CareVault" className="h-10 object-contain" />
       </div>
 
       <nav className="flex-1 space-y-6 px-3 py-4">
