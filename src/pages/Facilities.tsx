@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, RefreshCw, Building2, MapPin, Plus } from "lucide-react";
+import { RefreshCw, Building2, MapPin, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import StatusBadge from "@/components/StatusBadge";
