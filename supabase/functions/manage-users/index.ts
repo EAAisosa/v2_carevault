@@ -16,13 +16,16 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify the caller using anon client with their auth header
+    // Verify the caller using JWT claims (no session check needed)
     const authHeader = req.headers.get("Authorization")!;
+    if (!authHeader?.startsWith("Bearer ")) throw new Error("Unauthorized");
+    const token = authHeader.replace("Bearer ", "");
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user: caller }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !caller) throw new Error("Unauthorized");
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) throw new Error("Unauthorized");
+    const caller = { id: claimsData.claims.sub as string };
 
     const { data: callerRole } = await supabaseAdmin
       .from("user_roles")
