@@ -121,6 +121,57 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "reset_password") {
+      const { user_id } = payload;
+      const { data: targetProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("facility_id")
+        .eq("id", user_id)
+        .single();
+      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+
+      // Get user email
+      const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
+      if (getUserErr || !targetUser?.email) throw new Error("Could not find user email");
+
+      // Generate a password reset link
+      const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: targetUser.email,
+        options: {
+          redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/auth`,
+        },
+      });
+      if (linkErr) throw linkErr;
+
+      return new Response(JSON.stringify({ success: true, message: `Password reset link generated for ${targetUser.email}` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "resend_invite") {
+      const { user_id } = payload;
+      const { data: targetProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("facility_id")
+        .eq("id", user_id)
+        .single();
+      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+
+      const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
+      if (getUserErr || !targetUser?.email) throw new Error("Could not find user email");
+
+      const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetUser.email, {
+        data: targetUser.user_metadata,
+        redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/auth`,
+      });
+      if (inviteErr) throw inviteErr;
+
+      return new Response(JSON.stringify({ success: true, message: `Invite resent to ${targetUser.email}` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "list") {
       const { data: users } = await supabaseAdmin
         .from("profiles")
@@ -134,7 +185,7 @@ Deno.serve(async (req) => {
         .select("user_id, role")
         .in("user_id", userIds);
 
-      // Get auth user info (email, banned)
+      // Get auth user info (email, banned, confirmed)
       const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
 
       const enriched = (users || []).map((u) => {
@@ -145,6 +196,8 @@ Deno.serve(async (req) => {
           role: roleRow?.role || "clinician",
           email: authUser?.email || "",
           banned: !!authUser?.banned_until && new Date(authUser.banned_until) > new Date(),
+          confirmed: !!authUser?.email_confirmed_at,
+          last_sign_in: authUser?.last_sign_in_at || null,
         };
       });
 
