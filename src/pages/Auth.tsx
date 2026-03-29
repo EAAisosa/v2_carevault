@@ -40,9 +40,9 @@ export default function Auth() {
               <Database size={28} className="text-primary-foreground" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">NHRIRP</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">CareVault</h1>
           <p className="text-xs text-muted-foreground uppercase tracking-widest">
-            National Health Records Integration & Repository Platform
+            Secure Health Records Platform
           </p>
         </div>
 
