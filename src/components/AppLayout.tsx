@@ -72,8 +72,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Database size={18} className="text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-wide">NHRIRP</h1>
-          <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">Nigeria Health Records</p>
+          <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-wide">CareVault</h1>
+          <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">Health Records Platform</p>
         </div>
       </div>
 
