@@ -193,9 +193,7 @@ export default function Facilities() {
                   <span className="text-[10px] text-muted-foreground font-mono">
                     {f.last_sync ? `Last sync: ${new Date(f.last_sync).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Never synced"}
                   </span>
-                  <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1">
-                    <RefreshCw size={10} /> Sync
-                  </Button>
+                  <SyncButton facilityId={f.id} onSynced={fetchFacilities} />
                 </div>
               </div>
             </div>
