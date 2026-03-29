@@ -33,7 +33,10 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-0">
+        <div className="w-full max-w-md space-y-4">
+          <div className="flex justify-center">
+            <img src={carevaultLogo} alt="CareVault Logo" className="h-28 object-contain" />
+          </div>
 
         <Card className="border-border/50 shadow-md">
           <CardHeader className="text-center pb-4">
