@@ -14,6 +14,29 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setResetSent(true);
+      toast.success("Password reset link sent to your email");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reset link");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,10 +95,48 @@ export default function Auth() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="animate-spin" />}
-                Sign In
-              </Button>
+              {!forgotMode ? (
+                <>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="animate-spin" />}
+                    Sign In
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setForgotMode(true)}
+                    className="w-full text-xs text-primary hover:underline mt-2"
+                  >
+                    Forgot your password?
+                  </button>
+                </>
+              ) : resetSent ? (
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Check your email for a password reset link.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(false); setResetSent(false); }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Button type="button" className="w-full" disabled={loading} onClick={handleForgotPassword}>
+                    {loading && <Loader2 className="animate-spin" />}
+                    Send Reset Link
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setForgotMode(false)}
+                    className="w-full text-xs text-primary hover:underline mt-2"
+                  >
+                    Back to Sign In
+                  </button>
+                </>
+              )}
             </form>
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
