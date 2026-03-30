@@ -79,13 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
     setRole("clinician");
     setFullName("");
-  };
+  }, []);
+
+  useInactivityTimeout(signOut, !!session);
 
   return (
     <AuthContext.Provider
