@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: { full_name, facility_id, role: role || "clinician" },
-        redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/auth`,
+        redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/reset-password`,
       });
       if (createErr) throw createErr;
 
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
         type: "recovery",
         email: targetUser.email,
         options: {
-          redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/auth`,
+          redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/reset-password`,
         },
       });
       if (linkErr) throw linkErr;
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
       const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetUser.email, {
         data: targetUser.user_metadata,
-        redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/auth`,
+        redirectTo: `${req.headers.get("origin") || "https://carevaultng.lovable.app"}/reset-password`,
       });
       if (inviteErr) throw inviteErr;
 
