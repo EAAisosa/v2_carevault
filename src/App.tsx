@@ -16,6 +16,7 @@ import UserManagement from "@/pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
 import Auth from "@/pages/Auth";
+import ResetPassword from "@/pages/ResetPassword";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+    <Route path="/reset-password" element={<ResetPassword />} />
     <Route
       path="/*"
       element={
