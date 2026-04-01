@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 
-const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const INACTIVITY_TIMEOUT = 15 * 1000; // 15 seconds (temporary for testing)
 
 export function useInactivityTimeout(onTimeout: () => void, enabled: boolean) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
