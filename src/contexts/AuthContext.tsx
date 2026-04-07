@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
+import InactivityWarningModal from "@/components/InactivityWarningModal";
 
 export type AppRole = "clinician" | "administrator";
 
@@ -87,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFullName("");
   }, []);
 
-  useInactivityTimeout(signOut, !!session);
+  const { showWarning, secondsLeft, staySignedIn } = useInactivityTimeout(signOut, !!session);
 
   return (
     <AuthContext.Provider
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <InactivityWarningModal open={showWarning} secondsLeft={secondsLeft} onStay={staySignedIn} />
     </AuthContext.Provider>
   );
 }
