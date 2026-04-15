@@ -48,6 +48,7 @@ import {
   MoreHorizontal,
   KeyRound,
   Mail,
+  Building2,
 } from "lucide-react";
 
 interface ManagedUser {
