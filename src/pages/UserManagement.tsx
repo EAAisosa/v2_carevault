@@ -326,6 +326,7 @@ export default function UserManagement() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                {isCareVaultAdmin && <TableHead>Facility</TableHead>}
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Login</TableHead>
@@ -338,6 +339,7 @@ export default function UserManagement() {
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{u.email}</TableCell>
+                  {isCareVaultAdmin && <TableCell className="text-sm text-muted-foreground">{u.facility_name || "—"}</TableCell>}
                   <TableCell>
                     <Select
                       value={u.role}
