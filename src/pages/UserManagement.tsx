@@ -121,8 +121,9 @@ export default function UserManagement() {
   }, [user]);
 
   const handleInvite = async () => {
-    const targetFacilityId = isCareVaultAdmin ? inviteForm.facility_id : facilityId;
-    if (!targetFacilityId) {
+    const isInvitingCVAdmin = inviteForm.role === "carevault_admin";
+    const targetFacilityId = isInvitingCVAdmin ? null : (isCareVaultAdmin ? inviteForm.facility_id : facilityId);
+    if (!isInvitingCVAdmin && !targetFacilityId) {
       toast({ title: "No facility selected", description: "Please select a facility to assign this user to.", variant: "destructive" });
       return;
     }
