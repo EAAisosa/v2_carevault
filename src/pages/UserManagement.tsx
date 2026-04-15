@@ -121,8 +121,9 @@ export default function UserManagement() {
   }, [user]);
 
   const handleInvite = async () => {
-    const targetFacilityId = isCareVaultAdmin ? inviteForm.facility_id : facilityId;
-    if (!targetFacilityId) {
+    const isInvitingCVAdmin = inviteForm.role === "carevault_admin";
+    const targetFacilityId = isInvitingCVAdmin ? null : (isCareVaultAdmin ? inviteForm.facility_id : facilityId);
+    if (!isInvitingCVAdmin && !targetFacilityId) {
       toast({ title: "No facility selected", description: "Please select a facility to assign this user to.", variant: "destructive" });
       return;
     }
@@ -280,7 +281,7 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                {isCareVaultAdmin && (
+                {isCareVaultAdmin && inviteForm.role !== "carevault_admin" && (
                   <div className="space-y-2">
                     <Label>Assign to Facility</Label>
                     <Select
@@ -298,7 +299,7 @@ export default function UserManagement() {
                     </Select>
                   </div>
                 )}
-                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && !inviteForm.facility_id)} className="w-full">
+                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && inviteForm.role !== "carevault_admin" && !inviteForm.facility_id)} className="w-full">
                   {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
                   {inviting ? "Sending Invite..." : "Send Invite Email"}
                 </Button>
