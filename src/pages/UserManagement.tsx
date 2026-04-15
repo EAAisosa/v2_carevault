@@ -280,7 +280,25 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name} className="w-full">
+                {isCareVaultAdmin && (
+                  <div className="space-y-2">
+                    <Label>Assign to Facility</Label>
+                    <Select
+                      value={inviteForm.facility_id}
+                      onValueChange={(v) => setInviteForm((f) => ({ ...f, facility_id: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a facility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {facilities.map((fac) => (
+                          <SelectItem key={fac.id} value={fac.id}>{fac.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && !inviteForm.facility_id)} className="w-full">
                   {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
                   {inviting ? "Sending Invite..." : "Send Invite Email"}
                 </Button>
