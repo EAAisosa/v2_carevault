@@ -201,7 +201,7 @@ export default function UserManagement() {
     }
   };
 
-  if (!facilityId && !loading) {
+  if (!facilityId && !isCareVaultAdmin && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 animate-fade-in">
         <Users size={40} className="text-muted-foreground" />
