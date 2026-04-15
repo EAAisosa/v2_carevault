@@ -113,6 +113,11 @@ export default function UserManagement() {
   useEffect(() => {
     fetchFacilityId();
     fetchUsers();
+    if (isCareVaultAdmin) {
+      supabase.from("facilities").select("id, name").order("name").then(({ data }) => {
+        setFacilities(data || []);
+      });
+    }
   }, [user]);
 
   const handleInvite = async () => {
