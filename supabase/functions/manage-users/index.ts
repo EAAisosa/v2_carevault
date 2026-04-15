@@ -32,7 +32,11 @@ Deno.serve(async (req) => {
       .select("role")
       .eq("user_id", caller.id)
       .single();
-    if (callerRole?.role !== "administrator") throw new Error("Forbidden: admin only");
+    const role = callerRole?.role;
+    if (role !== "carevault_admin" && role !== "facility_admin" && role !== "administrator") {
+      throw new Error("Forbidden: admin only");
+    }
+    const isSuperAdmin = role === "carevault_admin";
 
     // Get caller's facility
     const { data: callerProfile } = await supabaseAdmin
@@ -40,7 +44,9 @@ Deno.serve(async (req) => {
       .select("facility_id")
       .eq("id", caller.id)
       .single();
-    if (!callerProfile?.facility_id) throw new Error("You must be assigned to a facility");
+    // Facility admins must have a facility; CareVault admins can operate without one
+    if (!isSuperAdmin && !callerProfile?.facility_id) throw new Error("You must be assigned to a facility");
+    const callerFacilityId = callerProfile?.facility_id;
 
     const { action, ...payload } = await req.json();
 
