@@ -62,7 +62,7 @@ interface ManagedUser {
 }
 
 export default function UserManagement() {
-  const { user } = useAuth();
+  const { user, isCareVaultAdmin } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,7 +266,8 @@ export default function UserManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="clinician">Clinician</SelectItem>
-                      <SelectItem value="administrator">Administrator</SelectItem>
+                      <SelectItem value="facility_admin">Facility Admin</SelectItem>
+                      {isCareVaultAdmin && <SelectItem value="carevault_admin">CareVault Admin</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
@@ -314,7 +315,7 @@ export default function UserManagement() {
                       onValueChange={(v) => handleRoleChange(u.id, v)}
                       disabled={u.id === user?.id || actionLoading === u.id}
                     >
-                      <SelectTrigger className="w-[140px] h-8 text-xs">
+                      <SelectTrigger className="w-[160px] h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -323,11 +324,18 @@ export default function UserManagement() {
                             <Stethoscope size={12} /> Clinician
                           </span>
                         </SelectItem>
-                        <SelectItem value="administrator">
+                        <SelectItem value="facility_admin">
                           <span className="flex items-center gap-1.5">
-                            <Shield size={12} /> Administrator
+                            <Building2 size={12} /> Facility Admin
                           </span>
                         </SelectItem>
+                        {isCareVaultAdmin && (
+                          <SelectItem value="carevault_admin">
+                            <span className="flex items-center gap-1.5">
+                              <Shield size={12} /> CareVault Admin
+                            </span>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </TableCell>
