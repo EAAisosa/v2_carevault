@@ -32,7 +32,11 @@ Deno.serve(async (req) => {
       .select("role")
       .eq("user_id", caller.id)
       .single();
-    if (callerRole?.role !== "administrator") throw new Error("Forbidden: admin only");
+    const role = callerRole?.role;
+    if (role !== "carevault_admin" && role !== "facility_admin" && role !== "administrator") {
+      throw new Error("Forbidden: admin only");
+    }
+    const isSuperAdmin = role === "carevault_admin";
 
     // Get caller's facility
     const { data: callerProfile } = await supabaseAdmin
@@ -40,14 +44,16 @@ Deno.serve(async (req) => {
       .select("facility_id")
       .eq("id", caller.id)
       .single();
-    if (!callerProfile?.facility_id) throw new Error("You must be assigned to a facility");
+    // Facility admins must have a facility; CareVault admins can operate without one
+    if (!isSuperAdmin && !callerProfile?.facility_id) throw new Error("You must be assigned to a facility");
+    const callerFacilityId = callerProfile?.facility_id;
 
     const { action, ...payload } = await req.json();
 
     if (action === "invite") {
       const { email, full_name, role, facility_id } = payload;
       // Only allow managing users in caller's own facility
-      if (facility_id !== callerProfile.facility_id) throw new Error("Cannot manage users outside your facility");
+      if (!isSuperAdmin && facility_id !== callerFacilityId) throw new Error("Cannot manage users outside your facility");
 
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: { full_name, facility_id, role: role || "clinician" },
@@ -68,7 +74,7 @@ Deno.serve(async (req) => {
         .select("facility_id")
         .eq("id", user_id)
         .single();
-      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+      if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
 
       await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", user_id);
       return new Response(JSON.stringify({ success: true }), {
@@ -83,7 +89,7 @@ Deno.serve(async (req) => {
         .select("facility_id")
         .eq("id", user_id)
         .single();
-      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+      if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
 
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876000h" });
       if (error) throw error;
@@ -99,7 +105,7 @@ Deno.serve(async (req) => {
         .select("facility_id")
         .eq("id", user_id)
         .single();
-      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+      if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
 
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "none" });
       if (error) throw error;
@@ -115,7 +121,7 @@ Deno.serve(async (req) => {
         .select("facility_id")
         .eq("id", user_id)
         .single();
-      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+      if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
       if (user_id === caller.id) throw new Error("Cannot delete yourself");
 
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
@@ -132,7 +138,7 @@ Deno.serve(async (req) => {
         .select("facility_id")
         .eq("id", user_id)
         .single();
-      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+      if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
 
       // Get user email
       const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
@@ -160,7 +166,7 @@ Deno.serve(async (req) => {
         .select("facility_id")
         .eq("id", user_id)
         .single();
-      if (targetProfile?.facility_id !== callerProfile.facility_id) throw new Error("User not in your facility");
+      if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
 
       const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
       if (getUserErr || !targetUser?.email) throw new Error("Could not find user email");
@@ -177,10 +183,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === "list") {
-      const { data: users } = await supabaseAdmin
+      let query = supabaseAdmin
         .from("profiles")
-        .select("id, full_name, facility_id, created_at")
-        .eq("facility_id", callerProfile.facility_id);
+        .select("id, full_name, facility_id, created_at");
+      if (!isSuperAdmin) {
+        query = query.eq("facility_id", callerFacilityId);
+      }
+      const { data: users } = await query;
 
       // Get roles for these users
       const userIds = (users || []).map((u) => u.id);
