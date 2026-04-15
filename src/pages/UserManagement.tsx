@@ -60,6 +60,7 @@ interface ManagedUser {
   confirmed: boolean;
   last_sign_in: string | null;
   created_at: string;
+  facility_name?: string;
 }
 
 export default function UserManagement() {
