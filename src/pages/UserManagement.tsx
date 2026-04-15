@@ -121,8 +121,9 @@ export default function UserManagement() {
   }, [user]);
 
   const handleInvite = async () => {
-    if (!facilityId) {
-      toast({ title: "No facility assigned", description: "You must be assigned to a facility first.", variant: "destructive" });
+    const targetFacilityId = isCareVaultAdmin ? inviteForm.facility_id : facilityId;
+    if (!targetFacilityId) {
+      toast({ title: "No facility selected", description: "Please select a facility to assign this user to.", variant: "destructive" });
       return;
     }
     setInviting(true);
@@ -131,11 +132,11 @@ export default function UserManagement() {
         email: inviteForm.email,
         full_name: inviteForm.full_name,
         role: inviteForm.role,
-        facility_id: facilityId,
+        facility_id: targetFacilityId,
       });
       toast({ title: "Invitation sent", description: `An invite email has been sent to ${inviteForm.email}.` });
       setInviteOpen(false);
-      setInviteForm({ email: "", full_name: "", role: "clinician" });
+      setInviteForm({ email: "", full_name: "", role: "clinician", facility_id: "" });
       fetchUsers();
     } catch (err: any) {
       toast({ title: "Invite failed", description: err.message, variant: "destructive" });
