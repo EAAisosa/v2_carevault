@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
+import FacilityConnections from "@/pages/FacilityConnections";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
