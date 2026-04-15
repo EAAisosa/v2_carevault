@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
-  const { isAdmin } = useAuth();
+  const { isAnyAdmin, isCareVaultAdmin } = useAuth();
   const recentStaging = stagingRecords.filter((s) => s.status === "pending" || s.status === "needs-review").slice(0, 4);
   const recentAudit = auditLogs.slice(0, 5);
 
@@ -35,16 +35,16 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">NHRIRP National Health Records — Overview</p>
       </div>
 
-      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-5" : "xl:grid-cols-3"}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${isAnyAdmin ? "xl:grid-cols-5" : "xl:grid-cols-3"}`}>
         <StatsCard label="Total Patients" value={stats.totalPatients.toLocaleString()} icon={<Users size={20} />} trend="Live from DB" trendUp />
         <StatsCard label="Total Encounters" value="4,892,340" icon={<Database size={20} />} trend="Mock data" />
-        {isAdmin && <StatsCard label="Facilities Connected" value={stats.totalFacilities} icon={<Activity size={20} />} />}
-        {isAdmin && <StatsCard label="Pending Merges" value={14} icon={<GitMerge size={20} />} trend="3 critical" />}
+        {isAnyAdmin && <StatsCard label="Facilities Connected" value={stats.totalFacilities} icon={<Activity size={20} />} />}
+        {isAnyAdmin && <StatsCard label="Pending Merges" value={14} icon={<GitMerge size={20} />} trend="3 critical" />}
         <StatsCard label="Today's Searches" value={2847} icon={<Search size={20} />} trend="+12% vs yesterday" trendUp />
       </div>
 
-      <div className={`grid gap-6 ${isAdmin ? "lg:grid-cols-2" : ""}`}>
-        {isAdmin && (
+      <div className={`grid gap-6 ${isAnyAdmin ? "lg:grid-cols-2" : ""}`}>
+        {isAnyAdmin && (
           <div className="elevated-card rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-foreground">Staging Queue</h3>
@@ -66,7 +66,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {isAdmin && (
+        {isAnyAdmin && (
           <div className="elevated-card rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-foreground">Recent Audit Activity</h3>

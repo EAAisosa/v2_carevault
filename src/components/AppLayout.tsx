@@ -20,32 +20,46 @@ interface NavItem {
   label: string;
   path: string;
   icon: ReactNode;
-  section: "clinician" | "admin";
+  /** Who can see this nav item */
+  access: "all" | "any_admin" | "carevault_admin";
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, section: "clinician" },
-  { label: "Patient Search", path: "/search", icon: <Search size={18} />, section: "clinician" },
-  { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, section: "admin" },
-  { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, section: "admin" },
-  { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, section: "admin" },
-  { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, section: "admin" },
-  { label: "User Management", path: "/users", icon: <Users size={18} />, section: "admin" },
-  { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, section: "admin" },
+  { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, access: "all" },
+  { label: "Patient Search", path: "/search", icon: <Search size={18} />, access: "all" },
+  { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, access: "any_admin" },
+  { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, access: "any_admin" },
+  { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, access: "carevault_admin" },
+  { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, access: "any_admin" },
+  { label: "User Management", path: "/users", icon: <Users size={18} />, access: "any_admin" },
+  { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, access: "carevault_admin" },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { role, isAdmin, fullName, signOut, user } = useAuth();
+  const { role, isAnyAdmin, isCareVaultAdmin, fullName, signOut, user } = useAuth();
 
-  const clinicianNav = navItems.filter((n) => n.section === "clinician");
-  const adminNav = navItems.filter((n) => n.section === "admin");
+  const visibleItems = navItems.filter((n) => {
+    if (n.access === "all") return true;
+    if (n.access === "any_admin") return isAnyAdmin;
+    if (n.access === "carevault_admin") return isCareVaultAdmin;
+    return false;
+  });
+
+  const clinicianNav = visibleItems.filter((n) => n.access === "all");
+  const adminNav = visibleItems.filter((n) => n.access !== "all");
 
   const displayName = fullName || user?.email || "User";
   const initials = fullName
     ? fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
     : "U";
+
+  const roleLabel = role === "carevault_admin"
+    ? "CareVault Admin"
+    : role === "facility_admin"
+      ? "Facility Admin"
+      : "Clinician";
 
   const renderNavItem = (item: NavItem) => {
     const active = location.pathname === item.path;
@@ -80,7 +94,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </p>
           <div className="space-y-1">{clinicianNav.map(renderNavItem)}</div>
         </div>
-        {isAdmin && (
+        {isAnyAdmin && adminNav.length > 0 && (
           <div>
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
               Administration
@@ -105,7 +119,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <div className="min-w-0">
             <p className="truncate text-xs font-medium text-sidebar-foreground">{displayName}</p>
             <p className="truncate text-[10px] text-sidebar-foreground/50">
-              {role === "clinician" ? "Clinician" : "NHRIRP Administrator"}
+              {roleLabel}
             </p>
           </div>
         </div>

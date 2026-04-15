@@ -4,14 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import InactivityWarningModal from "@/components/InactivityWarningModal";
 
-export type AppRole = "clinician" | "administrator";
+export type AppRole = "clinician" | "facility_admin" | "carevault_admin";
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   role: AppRole;
-  isAdmin: boolean;
+  isCareVaultAdmin: boolean;
+  isFacilityAdmin: boolean;
+  isAnyAdmin: boolean;
   fullName: string;
+  facilityId: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -23,10 +26,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole>("clinician");
   const [fullName, setFullName] = useState("");
+  const [facilityId, setFacilityId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
-    // Fetch role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -37,37 +40,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(roleData.role as AppRole);
     }
 
-    // Fetch profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name")
+      .select("full_name, facility_id")
       .eq("id", userId)
       .single();
 
     if (profile) {
       setFullName(profile.full_name);
+      setFacilityId(profile.facility_id || null);
     }
   };
 
   useEffect(() => {
-    // Listen for auth changes FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock
           setTimeout(() => fetchUserData(session.user.id), 0);
         } else {
           setRole("clinician");
           setFullName("");
+          setFacilityId(null);
         }
         setLoading(false);
       }
     );
 
-    // Then check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -86,9 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setRole("clinician");
     setFullName("");
+    setFacilityId(null);
   }, []);
 
   const { showWarning, secondsLeft, staySignedIn } = useInactivityTimeout(signOut, !!session);
+
+  const isCareVaultAdmin = role === "carevault_admin";
+  const isFacilityAdmin = role === "facility_admin";
+  const isAnyAdmin = isCareVaultAdmin || isFacilityAdmin;
 
   return (
     <AuthContext.Provider
@@ -96,8 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         user,
         role,
-        isAdmin: role === "administrator",
+        isCareVaultAdmin,
+        isFacilityAdmin,
+        isAnyAdmin,
         fullName,
+        facilityId,
         loading,
         signOut,
       }}
