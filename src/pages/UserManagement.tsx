@@ -280,7 +280,7 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                {isCareVaultAdmin && (
+                {isCareVaultAdmin && inviteForm.role !== "carevault_admin" && (
                   <div className="space-y-2">
                     <Label>Assign to Facility</Label>
                     <Select
@@ -298,7 +298,7 @@ export default function UserManagement() {
                     </Select>
                   </div>
                 )}
-                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && !inviteForm.facility_id)} className="w-full">
+                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && inviteForm.role !== "carevault_admin" && !inviteForm.facility_id)} className="w-full">
                   {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
                   {inviting ? "Sending Invite..." : "Send Invite Email"}
                 </Button>
