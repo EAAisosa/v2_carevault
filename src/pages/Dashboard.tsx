@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
-  const { isAdmin } = useAuth();
+  const { isAnyAdmin, isCareVaultAdmin } = useAuth();
   const recentStaging = stagingRecords.filter((s) => s.status === "pending" || s.status === "needs-review").slice(0, 4);
   const recentAudit = auditLogs.slice(0, 5);
 
