@@ -11,6 +11,7 @@ import {
   Menu,
   ChevronRight,
   LogOut,
+  Plug,
 } from "lucide-react";
 import carevaultLogo from "@/assets/carevault-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
