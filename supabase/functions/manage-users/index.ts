@@ -54,6 +54,8 @@ Deno.serve(async (req) => {
       const { email, full_name, role, facility_id } = payload;
       // Only allow managing users in caller's own facility
       if (!isSuperAdmin && facility_id !== callerFacilityId) throw new Error("Cannot manage users outside your facility");
+      // Only CareVault admins can create other CareVault admins
+      if (role === "carevault_admin" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the CareVault Admin role");
 
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: { full_name, facility_id, role: role || "clinician" },
@@ -75,6 +77,7 @@ Deno.serve(async (req) => {
         .eq("id", user_id)
         .single();
       if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
+      if (role === "carevault_admin" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the CareVault Admin role");
 
       await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", user_id);
       return new Response(JSON.stringify({ success: true }), {
