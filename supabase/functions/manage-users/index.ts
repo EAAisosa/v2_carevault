@@ -197,6 +197,13 @@ Deno.serve(async (req) => {
       }
       const { data: users } = await query;
 
+      // Get facility names for mapping
+      const facilityIds = [...new Set((users || []).map((u) => u.facility_id).filter(Boolean))];
+      const { data: facilityRows } = facilityIds.length > 0
+        ? await supabaseAdmin.from("facilities").select("id, name").in("id", facilityIds)
+        : { data: [] };
+      const facilityMap = Object.fromEntries((facilityRows || []).map((f) => [f.id, f.name]));
+
       // Get roles for these users
       const userIds = (users || []).map((u) => u.id);
       const { data: roles } = await supabaseAdmin
@@ -217,6 +224,7 @@ Deno.serve(async (req) => {
           banned: !!authUser?.banned_until && new Date(authUser.banned_until) > new Date(),
           confirmed: !!authUser?.email_confirmed_at,
           last_sign_in: authUser?.last_sign_in_at || null,
+          facility_name: u.facility_id ? facilityMap[u.facility_id] || "Unknown" : "—",
         };
       });
 
