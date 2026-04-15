@@ -76,6 +76,7 @@ const AppRoutes = () => (
               <Route path="/facilities" element={<AdminRoute><Facilities /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute><AuditLogs /></AdminRoute>} />
               <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
+              <Route path="/connections" element={<AdminRoute><FacilityConnections /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
