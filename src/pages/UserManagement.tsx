@@ -73,9 +73,11 @@ export default function UserManagement() {
     email: "",
     full_name: "",
     role: "clinician",
+    facility_id: "",
   });
   const [inviting, setInviting] = useState(false);
   const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
 
   const callManageUsers = async (action: string, payload: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke("manage-users", {
