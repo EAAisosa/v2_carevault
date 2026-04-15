@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
+import FacilityConnections from "@/pages/FacilityConnections";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,7 @@ const AppRoutes = () => (
               <Route path="/facilities" element={<AdminRoute><Facilities /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute><AuditLogs /></AdminRoute>} />
               <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
+              <Route path="/connections" element={<AdminRoute><FacilityConnections /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>

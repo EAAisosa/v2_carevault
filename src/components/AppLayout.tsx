@@ -11,6 +11,7 @@ import {
   Menu,
   ChevronRight,
   LogOut,
+  Plug,
 } from "lucide-react";
 import carevaultLogo from "@/assets/carevault-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, section: "admin" },
   { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, section: "admin" },
   { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, section: "admin" },
+  { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, section: "admin" },
   { label: "User Management", path: "/users", icon: <Users size={18} />, section: "admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, section: "admin" },
 ];

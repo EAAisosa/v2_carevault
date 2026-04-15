@@ -59,6 +59,62 @@ export type Database = {
         }
         Relationships: []
       }
+      facility_connections: {
+        Row: {
+          auth_credentials: Json
+          auth_type: string
+          base_url: string
+          created_at: string
+          ehr_type: string
+          facility_id: string
+          fhir_version: string
+          id: string
+          is_active: boolean
+          last_successful_sync: string | null
+          sync_direction: string
+          sync_interval_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          auth_credentials?: Json
+          auth_type?: string
+          base_url: string
+          created_at?: string
+          ehr_type?: string
+          facility_id: string
+          fhir_version?: string
+          id?: string
+          is_active?: boolean
+          last_successful_sync?: string | null
+          sync_direction?: string
+          sync_interval_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          auth_credentials?: Json
+          auth_type?: string
+          base_url?: string
+          created_at?: string
+          ehr_type?: string
+          facility_id?: string
+          fhir_version?: string
+          id?: string
+          is_active?: boolean
+          last_successful_sync?: string | null
+          sync_direction?: string
+          sync_interval_minutes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_connections_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           blood_group: string | null
@@ -215,6 +271,78 @@ export type Database = {
           {
             foreignKeyName: "staged_records_source_facility_id_fkey"
             columns: ["source_facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          direction: string
+          error_details: Json | null
+          error_message: string | null
+          facility_connection_id: string | null
+          facility_id: string
+          id: string
+          max_retries: number
+          next_retry_at: string | null
+          records_failed: number
+          records_processed: number
+          retry_count: number
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          direction?: string
+          error_details?: Json | null
+          error_message?: string | null
+          facility_connection_id?: string | null
+          facility_id: string
+          id?: string
+          max_retries?: number
+          next_retry_at?: string | null
+          records_failed?: number
+          records_processed?: number
+          retry_count?: number
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          direction?: string
+          error_details?: Json | null
+          error_message?: string | null
+          facility_connection_id?: string | null
+          facility_id?: string
+          id?: string
+          max_retries?: number
+          next_retry_at?: string | null
+          records_failed?: number
+          records_processed?: number
+          retry_count?: number
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_logs_facility_connection_id_fkey"
+            columns: ["facility_connection_id"]
+            isOneToOne: false
+            referencedRelation: "facility_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_logs_facility_id_fkey"
+            columns: ["facility_id"]
             isOneToOne: false
             referencedRelation: "facilities"
             referencedColumns: ["id"]
