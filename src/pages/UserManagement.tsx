@@ -79,6 +79,7 @@ export default function UserManagement() {
   const [inviting, setInviting] = useState(false);
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
+  const [selectedFacilityFilter, setSelectedFacilityFilter] = useState<string>("all");
 
   const callManageUsers = async (action: string, payload: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke("manage-users", {
@@ -223,6 +224,12 @@ export default function UserManagement() {
     );
   }
 
+  const filteredUsers = users.filter((u) => {
+    if (!isCareVaultAdmin || selectedFacilityFilter === "all") return true;
+    if (selectedFacilityFilter === "none") return !u.facility_name || u.facility_name === "—";
+    return u.facility_name === facilities.find((f) => f.id === selectedFacilityFilter)?.name;
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -310,15 +317,47 @@ export default function UserManagement() {
         </div>
       </div>
 
+      {isCareVaultAdmin && (
+        <div className="flex items-center gap-2">
+          <Label className="text-sm text-muted-foreground whitespace-nowrap">Filter by Facility:</Label>
+          <Select value={selectedFacilityFilter} onValueChange={setSelectedFacilityFilter}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Facilities</SelectItem>
+              <SelectItem value="none">No Facility Assigned</SelectItem>
+              {facilities.map((fac) => (
+                <SelectItem key={fac.id} value={fac.id}>{fac.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedFacilityFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedFacilityFilter("all")}
+              className="text-xs"
+            >
+              Clear Filter
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="rounded-xl border bg-card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={24} className="animate-spin text-primary" />
           </div>
-        ) : users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Users size={32} />
-            <p className="mt-2 text-sm">No users found in your facility</p>
+            <p className="mt-2 text-sm">
+              {selectedFacilityFilter !== "all" 
+                ? "No users found for this facility filter" 
+                : "No users found in your facility"}
+            </p>
           </div>
         ) : (
           <Table>
@@ -335,7 +374,7 @@ export default function UserManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{u.email}</TableCell>
