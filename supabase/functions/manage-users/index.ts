@@ -183,10 +183,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === "list") {
-      const { data: users } = await supabaseAdmin
+      let query = supabaseAdmin
         .from("profiles")
-        .select("id, full_name, facility_id, created_at")
-        .eq("facility_id", callerFacilityId);
+        .select("id, full_name, facility_id, created_at");
+      if (!isSuperAdmin) {
+        query = query.eq("facility_id", callerFacilityId);
+      }
+      const { data: users } = await query;
 
       // Get roles for these users
       const userIds = (users || []).map((u) => u.id);
