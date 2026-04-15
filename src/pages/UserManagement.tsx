@@ -73,9 +73,11 @@ export default function UserManagement() {
     email: "",
     full_name: "",
     role: "clinician",
+    facility_id: "",
   });
   const [inviting, setInviting] = useState(false);
   const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
 
   const callManageUsers = async (action: string, payload: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke("manage-users", {
@@ -111,11 +113,17 @@ export default function UserManagement() {
   useEffect(() => {
     fetchFacilityId();
     fetchUsers();
+    if (isCareVaultAdmin) {
+      supabase.from("facilities").select("id, name").order("name").then(({ data }) => {
+        setFacilities(data || []);
+      });
+    }
   }, [user]);
 
   const handleInvite = async () => {
-    if (!facilityId) {
-      toast({ title: "No facility assigned", description: "You must be assigned to a facility first.", variant: "destructive" });
+    const targetFacilityId = isCareVaultAdmin ? inviteForm.facility_id : facilityId;
+    if (!targetFacilityId) {
+      toast({ title: "No facility selected", description: "Please select a facility to assign this user to.", variant: "destructive" });
       return;
     }
     setInviting(true);
@@ -124,11 +132,11 @@ export default function UserManagement() {
         email: inviteForm.email,
         full_name: inviteForm.full_name,
         role: inviteForm.role,
-        facility_id: facilityId,
+        facility_id: targetFacilityId,
       });
       toast({ title: "Invitation sent", description: `An invite email has been sent to ${inviteForm.email}.` });
       setInviteOpen(false);
-      setInviteForm({ email: "", full_name: "", role: "clinician" });
+      setInviteForm({ email: "", full_name: "", role: "clinician", facility_id: "" });
       fetchUsers();
     } catch (err: any) {
       toast({ title: "Invite failed", description: err.message, variant: "destructive" });
@@ -272,7 +280,25 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name} className="w-full">
+                {isCareVaultAdmin && (
+                  <div className="space-y-2">
+                    <Label>Assign to Facility</Label>
+                    <Select
+                      value={inviteForm.facility_id}
+                      onValueChange={(v) => setInviteForm((f) => ({ ...f, facility_id: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a facility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {facilities.map((fac) => (
+                          <SelectItem key={fac.id} value={fac.id}>{fac.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && !inviteForm.facility_id)} className="w-full">
                   {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
                   {inviting ? "Sending Invite..." : "Send Invite Email"}
                 </Button>
