@@ -31,7 +31,7 @@ const SUMMARIES = [
 ];
 
 const CONFLICT_TYPES = [
-  null, null, null, // weighted toward no conflict
+  null, null, null,
   "Conflicting allergy data with existing record",
   "Duplicate encounter suspected — similar record from yesterday",
   "Blood group mismatch with registered data",
@@ -65,20 +65,56 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
+    const token = authHeader.replace("Bearer ", "");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Verify the JWT
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
+    const callerId = claimsData.claims.sub as string;
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Check role
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", callerId)
+      .single();
+    const role = roleRow?.role;
+    if (role !== "facility_admin" && role !== "carevault_admin") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+    }
+    const isSuperAdmin = role === "carevault_admin";
+
+    // Get caller's facility
+    const { data: callerProfile } = await supabase
+      .from("profiles")
+      .select("facility_id")
+      .eq("id", callerId)
+      .single();
 
     const { facility_id } = await req.json();
     if (!facility_id) {
       return new Response(JSON.stringify({ error: "facility_id required" }), { status: 400, headers: corsHeaders });
     }
 
-    // Get facility info
+    // Facility scoping: facility admins can only sync their own facility
+    if (!isSuperAdmin && facility_id !== callerProfile?.facility_id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+    }
+
     const { data: facility, error: facErr } = await supabase
       .from("facilities")
       .select("id, name")
@@ -89,7 +125,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Facility not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Generate 2-5 mock records
     const count = 2 + Math.floor(Math.random() * 4);
     const records = Array.from({ length: count }, () => {
       const firstName = pick(NIGERIAN_NAMES.first);
@@ -124,7 +159,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: insertErr.message }), { status: 500, headers: corsHeaders });
     }
 
-    // Update facility last_sync
     await supabase.from("facilities").update({ last_sync: new Date().toISOString() }).eq("id", facility_id);
 
     return new Response(JSON.stringify({ success: true, records_synced: count }), {
@@ -132,6 +166,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: corsHeaders });
   }
 });
