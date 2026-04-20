@@ -68,7 +68,13 @@ Deno.serve(async (req) => {
         data: { full_name, facility_id, role: role || "clinician" },
         redirectTo: getRedirectUrl("/reset-password"),
       });
-      if (createErr) throw createErr;
+      if (createErr) {
+        const msg = (createErr.message || "").toLowerCase();
+        if (msg.includes("already") || msg.includes("registered") || (createErr as any).status === 422) {
+          throw new Error(`A user with the email ${email} already exists. Use "Resend Invite" or "Reset Password" from the user's row instead.`);
+        }
+        throw createErr;
+      }
 
       return new Response(JSON.stringify({ user: newUser.user }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
