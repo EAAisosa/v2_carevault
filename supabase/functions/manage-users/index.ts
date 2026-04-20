@@ -9,6 +9,12 @@ const APP_URL = "https://www.carevaultng.com";
 
 const getRedirectUrl = (path: string) => `${APP_URL}${path}`;
 
+const jsonResponse = (payload: Record<string, unknown>) =>
+  new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -76,9 +82,7 @@ Deno.serve(async (req) => {
         throw createErr;
       }
 
-      return new Response(JSON.stringify({ user: newUser.user }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, user: newUser.user });
     }
 
     if (action === "update_role") {
@@ -93,9 +97,7 @@ Deno.serve(async (req) => {
       if (role === "carevault_admin" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the CareVault Admin role");
 
       await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", user_id);
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, success: true });
     }
 
     if (action === "deactivate") {
@@ -109,9 +111,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "876000h" });
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, success: true });
     }
 
     if (action === "activate") {
@@ -125,9 +125,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: "none" });
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, success: true });
     }
 
     if (action === "delete") {
@@ -142,9 +140,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, success: true });
     }
 
     if (action === "reset_password") {
@@ -170,9 +166,7 @@ Deno.serve(async (req) => {
       });
       if (linkErr) throw linkErr;
 
-      return new Response(JSON.stringify({ success: true, message: `Password reset link generated for ${targetUser.email}` }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, success: true, message: `Password reset link generated for ${targetUser.email}` });
     }
 
     if (action === "resend_invite") {
@@ -193,9 +187,7 @@ Deno.serve(async (req) => {
       });
       if (inviteErr) throw inviteErr;
 
-      return new Response(JSON.stringify({ success: true, message: `Invite resent to ${targetUser.email}` }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, success: true, message: `Invite resent to ${targetUser.email}` });
     }
 
     if (action === "list") {
@@ -238,16 +230,14 @@ Deno.serve(async (req) => {
         };
       });
 
-      return new Response(JSON.stringify({ users: enriched }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: true, users: enriched });
     }
 
     throw new Error("Unknown action");
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return jsonResponse({
+      ok: false,
+      error: err instanceof Error ? err.message : "Unknown error",
     });
   }
 });
