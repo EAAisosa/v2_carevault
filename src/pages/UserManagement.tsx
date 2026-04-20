@@ -85,7 +85,18 @@ export default function UserManagement() {
     const { data, error } = await supabase.functions.invoke("manage-users", {
       body: { action, ...payload },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Try to parse the actual error message from the response body
+      let detail = error.message;
+      try {
+        const ctx = (error as any).context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.json();
+          if (body?.error) detail = body.error;
+        }
+      } catch { /* ignore */ }
+      throw new Error(detail);
+    }
     if (data?.error) throw new Error(data.error);
     return data;
   };
