@@ -98,6 +98,8 @@ Deno.serve(async (req) => {
       if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
       if (role === "carevault_admin" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the CareVault Admin role");
 
+      if (role === "researcher" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the Researcher role");
+
       await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", user_id);
       return jsonResponse({ ok: true, success: true });
     }
