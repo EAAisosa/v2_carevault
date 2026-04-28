@@ -25,18 +25,26 @@ interface NavItem {
   path: string;
   icon: ReactNode;
   /** Who can see this nav item */
-  access: "all" | "any_admin" | "carevault_admin";
+  access: "clinician_portal" | "any_admin" | "carevault_admin" | "facility_admin_review" | "researcher_portal" | "researcher_review_admin";
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, access: "all" },
-  { label: "Patient Search", path: "/search", icon: <Search size={18} />, access: "all" },
+  // Clinician portal (clinicians + admins)
+  { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, access: "clinician_portal" },
+  { label: "Patient Search", path: "/search", icon: <Search size={18} />, access: "clinician_portal" },
+  // Admin
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, access: "carevault_admin" },
   { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, access: "carevault_admin" },
   { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, access: "carevault_admin" },
   { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, access: "any_admin" },
   { label: "User Management", path: "/users", icon: <Users size={18} />, access: "any_admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, access: "carevault_admin" },
+  // Research review (admins reviewing requests)
+  { label: "Research Requests", path: "/research-requests", icon: <Inbox size={18} />, access: "researcher_review_admin" },
+  // Researcher portal
+  { label: "Research Dashboard", path: "/research", icon: <FlaskConical size={18} />, access: "researcher_portal" },
+  { label: "My Projects", path: "/research/projects", icon: <ClipboardList size={18} />, access: "researcher_portal" },
+  { label: "Explore Data", path: "/research/explore", icon: <Database size={18} />, access: "researcher_portal" },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
