@@ -71,8 +71,8 @@ const AppRoutes = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/search" element={<PatientSearch />} />
               <Route path="/patient/:id" element={<PatientSummary />} />
-              <Route path="/staging" element={<AdminRoute><StagingQueue /></AdminRoute>} />
-              <Route path="/integrated" element={<AdminRoute><IntegratedRecords /></AdminRoute>} />
+              <Route path="/staging" element={<AdminRoute superOnly><StagingQueue /></AdminRoute>} />
+              <Route path="/integrated" element={<AdminRoute superOnly><IntegratedRecords /></AdminRoute>} />
               <Route path="/facilities" element={<AdminRoute superOnly><Facilities /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute superOnly><AuditLogs /></AdminRoute>} />
               <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
