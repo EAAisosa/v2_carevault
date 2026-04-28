@@ -60,7 +60,7 @@ export default function FacilityConnections() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("facility_connections")
-        .select("*, facilities(name, location)")
+        .select("id, facility_id, ehr_type, base_url, auth_type, fhir_version, sync_direction, sync_interval_minutes, is_active, last_successful_sync, created_at, updated_at, facilities(name, location)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as FacilityConnection[];
