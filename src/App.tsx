@@ -63,6 +63,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function HomeRoute() {
+  const { isResearcher } = useAuth();
+  if (isResearcher) return <Navigate to="/research" replace />;
+  return <Dashboard />;
+}
+
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
@@ -73,7 +79,7 @@ const AppRoutes = () => (
         <ProtectedRoute>
           <AppLayout>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<HomeRoute />} />
               <Route path="/search" element={<PatientSearch />} />
               <Route path="/patient/:id" element={<PatientSummary />} />
               <Route path="/staging" element={<AdminRoute superOnly><StagingQueue /></AdminRoute>} />
