@@ -12,6 +12,10 @@ import {
   ChevronRight,
   LogOut,
   Plug,
+  FlaskConical,
+  ClipboardList,
+  Database,
+  Inbox,
 } from "lucide-react";
 import carevaultLogo from "@/assets/carevault-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
