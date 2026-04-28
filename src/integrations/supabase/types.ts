@@ -392,6 +392,7 @@ export type Database = {
         | "administrator"
         | "facility_admin"
         | "carevault_admin"
+        | "researcher"
       facility_status: "online" | "degraded" | "offline"
     }
     CompositeTypes: {
@@ -525,6 +526,7 @@ export const Constants = {
         "administrator",
         "facility_admin",
         "carevault_admin",
+        "researcher",
       ],
       facility_status: ["online", "degraded", "offline"],
     },
