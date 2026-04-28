@@ -15,9 +15,14 @@ import Facilities from "@/pages/Facilities";
 import UserManagement from "@/pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
+import ResearcherRoute from "@/components/ResearcherRoute";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
 import FacilityConnections from "@/pages/FacilityConnections";
+import ResearchRequests from "@/pages/ResearchRequests";
+import ResearchDashboard from "@/pages/research/ResearchDashboard";
+import MyProjects from "@/pages/research/MyProjects";
+import ExploreData from "@/pages/research/ExploreData";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -77,6 +82,10 @@ const AppRoutes = () => (
               <Route path="/audit" element={<AdminRoute superOnly><AuditLogs /></AdminRoute>} />
               <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
               <Route path="/connections" element={<AdminRoute><FacilityConnections /></AdminRoute>} />
+              <Route path="/research-requests" element={<AdminRoute><ResearchRequests /></AdminRoute>} />
+              <Route path="/research" element={<ResearcherRoute><ResearchDashboard /></ResearcherRoute>} />
+              <Route path="/research/projects" element={<ResearcherRoute><MyProjects /></ResearcherRoute>} />
+              <Route path="/research/explore" element={<ResearcherRoute><ExploreData /></ResearcherRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
