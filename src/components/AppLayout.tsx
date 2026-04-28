@@ -50,17 +50,30 @@ const navItems: NavItem[] = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { role, isAnyAdmin, isCareVaultAdmin, fullName, signOut, user } = useAuth();
+  const { role, isAnyAdmin, isCareVaultAdmin, isResearcher, fullName, signOut, user } = useAuth();
 
   const visibleItems = navItems.filter((n) => {
-    if (n.access === "all") return true;
-    if (n.access === "any_admin") return isAnyAdmin;
-    if (n.access === "carevault_admin") return isCareVaultAdmin;
-    return false;
+    switch (n.access) {
+      case "clinician_portal":
+        return !isResearcher; // clinicians + admins, not researchers
+      case "any_admin":
+        return isAnyAdmin;
+      case "carevault_admin":
+        return isCareVaultAdmin;
+      case "researcher_review_admin":
+        return isAnyAdmin;
+      case "researcher_portal":
+        return isResearcher;
+      case "facility_admin_review":
+        return isAnyAdmin;
+      default:
+        return false;
+    }
   });
 
-  const clinicianNav = visibleItems.filter((n) => n.access === "all");
-  const adminNav = visibleItems.filter((n) => n.access !== "all");
+  const clinicianNav = visibleItems.filter((n) => n.access === "clinician_portal");
+  const adminNav = visibleItems.filter((n) => n.access === "any_admin" || n.access === "carevault_admin" || n.access === "researcher_review_admin");
+  const researcherNav = visibleItems.filter((n) => n.access === "researcher_portal");
 
   const displayName = fullName || user?.email || "User";
   const initials = fullName
@@ -71,7 +84,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     ? "CareVault Admin"
     : role === "facility_admin"
       ? "Facility Admin"
-      : "Clinician";
+      : role === "researcher"
+        ? "Researcher"
+        : "Clinician";
 
   const renderNavItem = (item: NavItem) => {
     const active = location.pathname === item.path;
