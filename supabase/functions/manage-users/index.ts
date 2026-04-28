@@ -62,10 +62,12 @@ Deno.serve(async (req) => {
 
     if (action === "invite") {
       const { email, full_name, role, facility_id } = payload;
-      // Only CareVault admins can create other CareVault admins
+      // Only CareVault admins can create other CareVault admins or researchers
       if (role === "carevault_admin" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the CareVault Admin role");
-      // CareVault admin invites don't need a facility
-      if (role !== "carevault_admin") {
+      if (role === "researcher" && !isSuperAdmin) throw new Error("Only CareVault admins can invite Researchers");
+      // CareVault admins and researchers don't need a facility
+      const facilitylessRoles = ["carevault_admin", "researcher"];
+      if (!facilitylessRoles.includes(role)) {
         if (!isSuperAdmin && facility_id !== callerFacilityId) throw new Error("Cannot manage users outside your facility");
         if (!facility_id) throw new Error("Facility is required for this role");
       }
@@ -95,6 +97,8 @@ Deno.serve(async (req) => {
         .single();
       if (!isSuperAdmin && targetProfile?.facility_id !== callerFacilityId) throw new Error("User not in your facility");
       if (role === "carevault_admin" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the CareVault Admin role");
+
+      if (role === "researcher" && !isSuperAdmin) throw new Error("Only CareVault admins can assign the Researcher role");
 
       await supabaseAdmin.from("user_roles").update({ role }).eq("user_id", user_id);
       return jsonResponse({ ok: true, success: true });

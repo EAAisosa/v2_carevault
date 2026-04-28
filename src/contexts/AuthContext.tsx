@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import InactivityWarningModal from "@/components/InactivityWarningModal";
 
-export type AppRole = "clinician" | "facility_admin" | "carevault_admin";
+export type AppRole = "clinician" | "facility_admin" | "carevault_admin" | "researcher";
 
 interface AuthContextType {
   session: Session | null;
@@ -13,6 +13,7 @@ interface AuthContextType {
   isCareVaultAdmin: boolean;
   isFacilityAdmin: boolean;
   isAnyAdmin: boolean;
+  isResearcher: boolean;
   fullName: string;
   facilityId: string | null;
   loading: boolean;
@@ -95,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isCareVaultAdmin = role === "carevault_admin";
   const isFacilityAdmin = role === "facility_admin";
   const isAnyAdmin = isCareVaultAdmin || isFacilityAdmin;
+  const isResearcher = role === "researcher";
 
   return (
     <AuthContext.Provider
@@ -105,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isCareVaultAdmin,
         isFacilityAdmin,
         isAnyAdmin,
+        isResearcher,
         fullName,
         facilityId,
         loading,

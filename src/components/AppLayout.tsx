@@ -12,6 +12,10 @@ import {
   ChevronRight,
   LogOut,
   Plug,
+  FlaskConical,
+  ClipboardList,
+  Database,
+  Inbox,
 } from "lucide-react";
 import carevaultLogo from "@/assets/carevault-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,34 +25,55 @@ interface NavItem {
   path: string;
   icon: ReactNode;
   /** Who can see this nav item */
-  access: "all" | "any_admin" | "carevault_admin";
+  access: "clinician_portal" | "any_admin" | "carevault_admin" | "facility_admin_review" | "researcher_portal" | "researcher_review_admin";
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, access: "all" },
-  { label: "Patient Search", path: "/search", icon: <Search size={18} />, access: "all" },
+  // Clinician portal (clinicians + admins)
+  { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, access: "clinician_portal" },
+  { label: "Patient Search", path: "/search", icon: <Search size={18} />, access: "clinician_portal" },
+  // Admin
   { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, access: "carevault_admin" },
   { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, access: "carevault_admin" },
   { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, access: "carevault_admin" },
   { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, access: "any_admin" },
   { label: "User Management", path: "/users", icon: <Users size={18} />, access: "any_admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, access: "carevault_admin" },
+  // Research review (admins reviewing requests)
+  { label: "Research Requests", path: "/research-requests", icon: <Inbox size={18} />, access: "researcher_review_admin" },
+  // Researcher portal
+  { label: "Research Dashboard", path: "/research", icon: <FlaskConical size={18} />, access: "researcher_portal" },
+  { label: "My Projects", path: "/research/projects", icon: <ClipboardList size={18} />, access: "researcher_portal" },
+  { label: "Explore Data", path: "/research/explore", icon: <Database size={18} />, access: "researcher_portal" },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { role, isAnyAdmin, isCareVaultAdmin, fullName, signOut, user } = useAuth();
+  const { role, isAnyAdmin, isCareVaultAdmin, isResearcher, fullName, signOut, user } = useAuth();
 
   const visibleItems = navItems.filter((n) => {
-    if (n.access === "all") return true;
-    if (n.access === "any_admin") return isAnyAdmin;
-    if (n.access === "carevault_admin") return isCareVaultAdmin;
-    return false;
+    switch (n.access) {
+      case "clinician_portal":
+        return !isResearcher; // clinicians + admins, not researchers
+      case "any_admin":
+        return isAnyAdmin;
+      case "carevault_admin":
+        return isCareVaultAdmin;
+      case "researcher_review_admin":
+        return isAnyAdmin;
+      case "researcher_portal":
+        return isResearcher;
+      case "facility_admin_review":
+        return isAnyAdmin;
+      default:
+        return false;
+    }
   });
 
-  const clinicianNav = visibleItems.filter((n) => n.access === "all");
-  const adminNav = visibleItems.filter((n) => n.access !== "all");
+  const clinicianNav = visibleItems.filter((n) => n.access === "clinician_portal");
+  const adminNav = visibleItems.filter((n) => n.access === "any_admin" || n.access === "carevault_admin" || n.access === "researcher_review_admin");
+  const researcherNav = visibleItems.filter((n) => n.access === "researcher_portal");
 
   const displayName = fullName || user?.email || "User";
   const initials = fullName
@@ -59,7 +84,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     ? "CareVault Admin"
     : role === "facility_admin"
       ? "Facility Admin"
-      : "Clinician";
+      : role === "researcher"
+        ? "Researcher"
+        : "Clinician";
 
   const renderNavItem = (item: NavItem) => {
     const active = location.pathname === item.path;
@@ -88,12 +115,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex-1 space-y-6 px-3 py-4">
-        <div>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            Clinician Portal
-          </p>
-          <div className="space-y-1">{clinicianNav.map(renderNavItem)}</div>
-        </div>
+        {clinicianNav.length > 0 && (
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Clinician Portal
+            </p>
+            <div className="space-y-1">{clinicianNav.map(renderNavItem)}</div>
+          </div>
+        )}
+        {researcherNav.length > 0 && (
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Researcher Portal
+            </p>
+            <div className="space-y-1">{researcherNav.map(renderNavItem)}</div>
+          </div>
+        )}
         {isAnyAdmin && adminNav.length > 0 && (
           <div>
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">

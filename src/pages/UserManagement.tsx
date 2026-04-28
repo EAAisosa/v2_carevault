@@ -134,9 +134,10 @@ export default function UserManagement() {
   }, [user]);
 
   const handleInvite = async () => {
-    const isInvitingCVAdmin = inviteForm.role === "carevault_admin";
-    const targetFacilityId = isInvitingCVAdmin ? null : (isCareVaultAdmin ? inviteForm.facility_id : facilityId);
-    if (!isInvitingCVAdmin && !targetFacilityId) {
+    const facilitylessRoles = ["carevault_admin", "researcher"];
+    const isFacilityless = facilitylessRoles.includes(inviteForm.role);
+    const targetFacilityId = isFacilityless ? null : (isCareVaultAdmin ? inviteForm.facility_id : facilityId);
+    if (!isFacilityless && !targetFacilityId) {
       toast({ title: "No facility selected", description: "Please select a facility to assign this user to.", variant: "destructive" });
       return;
     }
@@ -296,11 +297,12 @@ export default function UserManagement() {
                     <SelectContent>
                       <SelectItem value="clinician">Clinician</SelectItem>
                       <SelectItem value="facility_admin">Facility Admin</SelectItem>
+                      {isCareVaultAdmin && <SelectItem value="researcher">Researcher</SelectItem>}
                       {isCareVaultAdmin && <SelectItem value="carevault_admin">CareVault Admin</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
-                {isCareVaultAdmin && inviteForm.role !== "carevault_admin" && (
+                {isCareVaultAdmin && !["carevault_admin", "researcher"].includes(inviteForm.role) && (
                   <div className="space-y-2">
                     <Label>Assign to Facility</Label>
                     <Select
@@ -318,7 +320,7 @@ export default function UserManagement() {
                     </Select>
                   </div>
                 )}
-                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && inviteForm.role !== "carevault_admin" && !inviteForm.facility_id)} className="w-full">
+                <Button onClick={handleInvite} disabled={inviting || !inviteForm.email || !inviteForm.full_name || (isCareVaultAdmin && !["carevault_admin", "researcher"].includes(inviteForm.role) && !inviteForm.facility_id)} className="w-full">
                   {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
                   {inviting ? "Sending Invite..." : "Send Invite Email"}
                 </Button>
@@ -410,6 +412,13 @@ export default function UserManagement() {
                             <Building2 size={12} /> Facility Admin
                           </span>
                         </SelectItem>
+                        {isCareVaultAdmin && (
+                          <SelectItem value="researcher">
+                            <span className="flex items-center gap-1.5">
+                              <Stethoscope size={12} /> Researcher
+                            </span>
+                          </SelectItem>
+                        )}
                         {isCareVaultAdmin && (
                           <SelectItem value="carevault_admin">
                             <span className="flex items-center gap-1.5">
