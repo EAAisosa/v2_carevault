@@ -206,6 +206,142 @@ export type Database = {
           },
         ]
       }
+      research_project_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          project_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          project_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_project_audit_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "research_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_project_facilities: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          facility_id: string
+          id: string
+          project_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          facility_id: string
+          id?: string
+          project_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          facility_id?: string
+          id?: string
+          project_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_project_facilities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "research_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_projects: {
+        Row: {
+          carevault_decided_at: string | null
+          carevault_decided_by: string | null
+          carevault_decision: string | null
+          carevault_notes: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          date_from: string
+          date_to: string
+          description: string
+          id: string
+          purpose: string
+          requested_facility_ids: string[]
+          status: string
+          submitted_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          carevault_decided_at?: string | null
+          carevault_decided_by?: string | null
+          carevault_decision?: string | null
+          carevault_notes?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          date_from: string
+          date_to: string
+          description: string
+          id?: string
+          purpose: string
+          requested_facility_ids?: string[]
+          status?: string
+          submitted_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          carevault_decided_at?: string | null
+          carevault_decided_by?: string | null
+          carevault_decision?: string | null
+          carevault_notes?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          date_from?: string
+          date_to?: string
+          description?: string
+          id?: string
+          purpose?: string
+          requested_facility_ids?: string[]
+          status?: string
+          submitted_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staged_records: {
         Row: {
           admin_notes: string | null
@@ -369,7 +505,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      patients_deidentified: {
+        Row: {
+          age_band: string | null
+          blood_group: string | null
+          facility_id: string | null
+          gender: string | null
+          genotype: string | null
+          registered_on: string | null
+          research_id: string | null
+          state: string | null
+        }
+        Insert: {
+          age_band?: never
+          blood_group?: string | null
+          facility_id?: string | null
+          gender?: string | null
+          genotype?: string | null
+          registered_on?: never
+          research_id?: never
+          state?: string | null
+        }
+        Update: {
+          age_band?: never
+          blood_group?: string | null
+          facility_id?: string | null
+          gender?: string | null
+          genotype?: string | null
+          registered_on?: never
+          research_id?: never
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_facility_id: { Args: { _user_id: string }; Returns: string }
@@ -385,6 +561,11 @@ export type Database = {
         Returns: boolean
       }
       is_any_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_researcher: { Args: { _user_id: string }; Returns: boolean }
+      researcher_has_facility_access: {
+        Args: { _facility_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
