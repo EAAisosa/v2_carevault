@@ -16,6 +16,7 @@ import UserManagement from "@/pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "@/components/AdminRoute";
 import ResearcherRoute from "@/components/ResearcherRoute";
+import ClinicianRoute from "@/components/ClinicianRoute";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
 import FacilityConnections from "@/pages/FacilityConnections";
@@ -80,8 +81,8 @@ const AppRoutes = () => (
           <AppLayout>
             <Routes>
               <Route path="/" element={<HomeRoute />} />
-              <Route path="/search" element={<PatientSearch />} />
-              <Route path="/patient/:id" element={<PatientSummary />} />
+              <Route path="/search" element={<ClinicianRoute><PatientSearch /></ClinicianRoute>} />
+              <Route path="/patient/:id" element={<ClinicianRoute><PatientSummary /></ClinicianRoute>} />
               <Route path="/staging" element={<AdminRoute superOnly><StagingQueue /></AdminRoute>} />
               <Route path="/integrated" element={<AdminRoute superOnly><IntegratedRecords /></AdminRoute>} />
               <Route path="/facilities" element={<AdminRoute superOnly><Facilities /></AdminRoute>} />
