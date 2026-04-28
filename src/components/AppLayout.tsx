@@ -115,12 +115,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex-1 space-y-6 px-3 py-4">
-        <div>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            Clinician Portal
-          </p>
-          <div className="space-y-1">{clinicianNav.map(renderNavItem)}</div>
-        </div>
+        {clinicianNav.length > 0 && (
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Clinician Portal
+            </p>
+            <div className="space-y-1">{clinicianNav.map(renderNavItem)}</div>
+          </div>
+        )}
+        {researcherNav.length > 0 && (
+          <div>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Researcher Portal
+            </p>
+            <div className="space-y-1">{researcherNav.map(renderNavItem)}</div>
+          </div>
+        )}
         {isAnyAdmin && adminNav.length > 0 && (
           <div>
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
