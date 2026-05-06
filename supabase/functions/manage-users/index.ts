@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const APP_URL = "https://www.carevaultng.com";
+const APP_URL = "https://app.carevaultng.com";
 
 const getRedirectUrl = (path: string) => `${APP_URL}${path}`;
 

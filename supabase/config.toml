@@ -1,5 +1,9 @@
 project_id = "xvozzsoufirdxlnnlnky"
 
+[auth]
+site_url = "https://app.carevaultng.com"
+additional_redirect_urls = ["https://app.carevaultng.com/**"]
+
 [functions]
   [functions.auth-email-hook]
     verify_jwt = false
