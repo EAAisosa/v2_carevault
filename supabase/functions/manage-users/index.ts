@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
         if (!facility_id) throw new Error("Facility is required for this role");
       }
 
+      const intendedRole = role || "clinician";
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        data: { full_name, facility_id, role: role || "clinician" },
+        data: { full_name, facility_id, role: intendedRole },
         redirectTo: getRedirectUrl("/reset-password"),
       });
       if (createErr) {
@@ -82,6 +83,16 @@ Deno.serve(async (req) => {
           throw new Error(`A user with the email ${email} already exists. Use "Resend Invite" or "Reset Password" from the user's row instead.`);
         }
         throw createErr;
+      }
+
+      // The DB trigger creates the user_roles row as 'clinician' by default.
+      // Update it to the intended role now that we've verified the caller has permission.
+      if (intendedRole !== "clinician") {
+        const { error: roleErr } = await supabaseAdmin
+          .from("user_roles")
+          .update({ role: intendedRole })
+          .eq("user_id", newUser.user.id);
+        if (roleErr) throw new Error(`User invited but role assignment failed: ${roleErr.message}`);
       }
 
       return jsonResponse({ ok: true, user: newUser.user });
@@ -185,8 +196,15 @@ Deno.serve(async (req) => {
       const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
       if (getUserErr || !targetUser?.email) throw new Error("Could not find user email");
 
+      // Read the stored role so resend carries the correct one
+      const { data: storedRole } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user_id)
+        .single();
+
       const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetUser.email, {
-        data: targetUser.user_metadata,
+        data: { ...targetUser.user_metadata, role: storedRole?.role || "clinician" },
         redirectTo: getRedirectUrl("/reset-password"),
       });
       if (inviteErr) throw inviteErr;
