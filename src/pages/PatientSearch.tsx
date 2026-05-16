@@ -4,6 +4,7 @@ import { Search, User, AlertCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuditLog } from "@/hooks/useAuditLog";
 
 interface PatientResult {
   id: string;
@@ -30,6 +31,7 @@ export default function PatientSearch() {
   const [loading, setLoading] = useState(false);
   const [demoFields, setDemoFields] = useState({ firstName: "", lastName: "", dob: "", phone: "", gender: "" });
   const navigate = useNavigate();
+  const { log } = useAuditLog();
 
   const handleSearch = async () => {
     setSearched(true);
@@ -42,12 +44,16 @@ export default function PatientSearch() {
           .select("*, facilities(name)")
           .ilike("nin", `%${query}%`);
         if (error) throw error;
-        setResults(
-          (data || []).map((p: any) => ({
-            ...p,
-            facility_name: p.facilities?.name || "Unknown",
-          }))
-        );
+        const mapped = (data || []).map((p: any) => ({
+          ...p,
+          facility_name: p.facilities?.name || "Unknown",
+        }));
+        setResults(mapped);
+        log("PATIENT_SEARCH", {
+          resource: `NIN:${query}`,
+          status: "success",
+          metadata: { search_type: "nin", query, results_count: mapped.length },
+        });
       } else {
         // Demographic search — query broadly, score client-side
         let q = supabase.from("patients").select("*, facilities(name)");
@@ -74,10 +80,20 @@ export default function PatientSearch() {
           .sort((a: any, b: any) => b._score - a._score);
 
         setResults(scored);
+        log("PATIENT_SEARCH", {
+          resource: `Demographics:${[demoFields.firstName, demoFields.lastName].filter(Boolean).join(" ")}`,
+          status: "success",
+          metadata: { search_type: "demographics", fields: demoFields, results_count: scored.length },
+        });
       }
     } catch (err: any) {
       console.error("Search error:", err);
       setResults([]);
+      log("PATIENT_SEARCH", {
+        resource: searchType === "nin" ? `NIN:${query}` : "Demographics",
+        status: "failure",
+        metadata: { error: String(err) },
+      });
     }
     setLoading(false);
   };

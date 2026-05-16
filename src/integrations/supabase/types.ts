@@ -14,6 +14,176 @@ export type Database = {
   }
   public: {
     Tables: {
+      allergies: {
+        Row: {
+          created_at: string
+          date_recorded: string
+          facility_id: string | null
+          facility_name: string
+          id: string
+          patient_id: string
+          reaction: string
+          reported_by: string
+          severity: string
+          substance: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_recorded: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          patient_id: string
+          reaction?: string
+          reported_by?: string
+          severity?: string
+          substance: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_recorded?: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          patient_id?: string
+          reaction?: string
+          reported_by?: string
+          severity?: string
+          substance?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allergies_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allergies_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          facility_id: string | null
+          facility_name: string
+          id: string
+          ip_address: string
+          metadata: Json | null
+          resource: string
+          role: string
+          status: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          ip_address?: string
+          metadata?: Json | null
+          resource?: string
+          role?: string
+          status?: string
+          user_id: string
+          user_name?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          ip_address?: string
+          metadata?: Json | null
+          resource?: string
+          role?: string
+          status?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      encounters: {
+        Row: {
+          created_at: string
+          diagnosis: string
+          encounter_date: string
+          facility_id: string | null
+          facility_name: string
+          id: string
+          notes: string
+          patient_id: string
+          practitioner: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          diagnosis?: string
+          encounter_date: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          notes?: string
+          patient_id: string
+          practitioner?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          diagnosis?: string
+          encounter_date?: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          notes?: string
+          patient_id?: string
+          practitioner?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encounters_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounters_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       facilities: {
         Row: {
           created_at: string
@@ -111,6 +281,129 @@ export type Database = {
             columns: ["facility_id"]
             isOneToOne: false
             referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_results: {
+        Row: {
+          created_at: string
+          facility_id: string | null
+          facility_name: string
+          id: string
+          patient_id: string
+          reference_range: string
+          result: string
+          result_date: string
+          status: string
+          test: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          patient_id: string
+          reference_range?: string
+          result: string
+          result_date: string
+          status?: string
+          test: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string | null
+          facility_name?: string
+          id?: string
+          patient_id?: string
+          reference_range?: string
+          result?: string
+          result_date?: string
+          status?: string
+          test?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_results_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medications: {
+        Row: {
+          created_at: string
+          dosage: string
+          end_date: string | null
+          facility_id: string | null
+          facility_name: string
+          frequency: string
+          id: string
+          name: string
+          patient_id: string
+          prescribed_by: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dosage?: string
+          end_date?: string | null
+          facility_id?: string | null
+          facility_name?: string
+          frequency?: string
+          id?: string
+          name: string
+          patient_id: string
+          prescribed_by?: string
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: string
+          end_date?: string | null
+          facility_id?: string | null
+          facility_name?: string
+          frequency?: string
+          id?: string
+          name?: string
+          patient_id?: string
+          prescribed_by?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medications_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -502,6 +795,69 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vital_records: {
+        Row: {
+          created_at: string
+          diastolic: number | null
+          facility_id: string | null
+          facility_name: string
+          heart_rate: number | null
+          id: string
+          patient_id: string
+          recorded_date: string
+          spo2: number | null
+          systolic: number | null
+          temperature: number | null
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          diastolic?: number | null
+          facility_id?: string | null
+          facility_name?: string
+          heart_rate?: number | null
+          id?: string
+          patient_id: string
+          recorded_date: string
+          spo2?: number | null
+          systolic?: number | null
+          temperature?: number | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          diastolic?: number | null
+          facility_id?: string | null
+          facility_name?: string
+          heart_rate?: number | null
+          id?: string
+          patient_id?: string
+          recorded_date?: string
+          spo2?: number | null
+          systolic?: number | null
+          temperature?: number | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vital_records_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vital_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
