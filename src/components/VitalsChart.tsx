@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { VitalRecord } from "@/data/mockData";
+import type { VitalRecord } from "@/pages/PatientSummary";
 
 interface VitalsChartProps {
   data: VitalRecord[];
@@ -7,11 +7,11 @@ interface VitalsChartProps {
 
 export default function VitalsChart({ data }: VitalsChartProps) {
   const chartData = [...data].reverse().map((v) => ({
-    date: new Date(v.date).toLocaleDateString("en-NG", { month: "short", day: "numeric" }),
+    date: new Date(v.recorded_date).toLocaleDateString("en-NG", { month: "short", day: "numeric" }),
     Systolic: v.systolic,
     Diastolic: v.diastolic,
-    "Heart Rate": v.heartRate,
-    SpO2: v.spO2,
+    "Heart Rate": v.heart_rate,
+    SpO2: v.spo2,
   }));
 
   return (

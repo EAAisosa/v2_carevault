@@ -1,0 +1,247 @@
+##############################################################
+# CareVault — Self-Hosted Supabase
+# Deploy on AWS ECS Fargate (af-south-1) or EC2 (staging)
+# All secrets pulled from AWS Secrets Manager at runtime
+##############################################################
+
+version: "3.8"
+
+x-logging: &default-logging
+  driver: awslogs
+  options:
+    awslogs-group: /ecs/carevault-supabase
+    awslogs-region: af-south-1
+    awslogs-stream-prefix: ecs
+
+services:
+
+  ############################################################
+  # Kong — API Gateway (replaces Supabase Cloud's router)
+  ############################################################
+  kong:
+    image: ${ECR_REGISTRY}/carevault/kong:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"   # HTTP API (ALB terminates TLS)
+      - "8443:8443"   # HTTPS passthrough if needed
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: "64 160k"
+    volumes:
+      - ./volumes/api/kong.yml:/home/kong/kong.yml:ro
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  ############################################################
+  # Auth (GoTrue)
+  ############################################################
+  auth:
+    image: ${ECR_REGISTRY}/carevault/gotrue:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: "0.0.0.0"
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: "postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/postgres"
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_MAILER_AUTOCONFIRM: "false"   # Require email verification
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: "true"
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: "587"
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: "CareVault NHRIRP"
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      # Session security — auto-expire after 8h (clinical requirement)
+      GOTRUE_JWT_EXP: "28800"
+      GOTRUE_PASSWORD_MIN_LENGTH: "12"
+    logging: *default-logging
+
+  ############################################################
+  # REST API (PostgREST)
+  ############################################################
+  rest:
+    image: ${ECR_REGISTRY}/carevault/postgrest:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: "postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/postgres"
+      PGRST_DB_SCHEMAS: "public,storage,graphql_public"
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: "28800"
+    logging: *default-logging
+
+  ############################################################
+  # Realtime
+  ############################################################
+  realtime:
+    image: ${ECR_REGISTRY}/carevault/realtime:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "4000"
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: "5432"
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: ${JWT_SECRET}
+      API_JWT_SECRET: ${JWT_SECRET}
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      ENABLE_TAILSCALE: "false"
+      DNS_NODES: "''"
+    logging: *default-logging
+
+  ############################################################
+  # Storage API
+  ############################################################
+  storage:
+    image: ${ECR_REGISTRY}/carevault/storage-api:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: "postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/postgres"
+      FILE_SIZE_LIMIT: "52428800"   # 50MB max upload
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: ${S3_BUCKET}
+      REGION: af-south-1
+      AWS_DEFAULT_REGION: af-south-1
+      # Uses ECS task IAM role — no static credentials needed
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    logging: *default-logging
+
+  ############################################################
+  # Imgproxy (image transformations)
+  ############################################################
+  imgproxy:
+    image: darthsim/imgproxy:v3.8.0
+    restart: unless-stopped
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+    logging: *default-logging
+
+  ############################################################
+  # Meta (Postgres schema management)
+  ############################################################
+  meta:
+    image: supabase/postgres-meta:v0.83.2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: "8080"
+      PG_META_DB_HOST: ${POSTGRES_HOST}
+      PG_META_DB_PORT: "5432"
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    logging: *default-logging
+
+  ############################################################
+  # Edge Functions (Deno)
+  ############################################################
+  functions:
+    image: supabase/edge-runtime:v1.58.2
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: "postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/postgres"
+      VERIFY_JWT: "true"
+    volumes:
+      - ./supabase/functions:/home/deno/functions:ro
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/_shared
+    logging: *default-logging
+
+  ############################################################
+  # Analytics (Logflare) — optional, disable for air-gapped
+  ############################################################
+  analytics:
+    image: supabase/logflare:1.4.0
+    restart: unless-stopped
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: supabase_admin
+      DB_DATABASE: _supabase
+      DB_HOSTNAME: ${POSTGRES_HOST}
+      DB_PORT: "5432"
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEMA: _analytics
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
+      LOGFLARE_MIN_CLUSTER_SIZE: "1"
+    logging: *default-logging
+
+  ############################################################
+  # Studio (Supabase Dashboard — internal only)
+  # NOTE: Do NOT expose Studio publicly. Access via VPN/SSM.
+  ############################################################
+  studio:
+    image: supabase/studio:20240729-ce42139
+    restart: unless-stopped
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: "CareVault NHRIRP"
+      DEFAULT_PROJECT_NAME: "CareVault"
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY}
+      LOGFLARE_URL: http://analytics:4000
+      NEXT_PUBLIC_ENABLE_LOGS: "true"
+      NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+    logging: *default-logging
+
+volumes:
+  db_data:
