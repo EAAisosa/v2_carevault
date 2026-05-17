@@ -1,73 +1,174 @@
-# Welcome to your Lovable project
+# CareVault — NHRIRP Platform
 
-## Project info
+Nigeria's **National Health Records Integration & Repository Programme** platform. CareVault aggregates patient records from multiple hospital EHR systems (OpenMRS, Bahmni, DHIS2) via FHIR R4, stages them for admin review, and surfaces unified patient histories to clinicians — all compliant with NDPA 2023 and GAID 2025.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Live:** https://www.carevaultng.com
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| Backend | Self-hosted Supabase (PostgreSQL 16, GoTrue auth, PostgREST, Deno Edge Functions) |
+| Infrastructure | AWS af-south-1 (Cape Town) — all data stays in Africa |
+| EHR Integration | FHIR R4 via `supabase/functions/ehr-connector` |
+| Frontend Hosting | AWS Amplify (CI/CD from GitHub `main`) |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## Repository Structure
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+  pages/          # Route-level components
+  components/     # Shared UI components
+  contexts/       # AuthContext — roles: clinician | facility_admin | carevault_admin | researcher
+  integrations/
+    supabase/     # Generated Supabase client + TypeScript types
+supabase/
+  migrations/     # Timestamped SQL migration files (YYYYMMDDHHMMSS_description.sql)
+  functions/      # Deno edge functions (ehr-connector, manage-users, etc.)
+infra/
+  aws-cape-town/  # Terraform + Docker Compose for production deployment
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## User Roles
 
-**Use GitHub Codespaces**
+| Role | Access |
+|------|--------|
+| `clinician` | Read patients, encounters, vitals, medications, allergies, labs |
+| `facility_admin` | Manage users and EHR connections for their facility; approve research requests |
+| `carevault_admin` | Full access — staging queue, audit logs, all facilities, user management |
+| `researcher` | De-identified data via approved research projects only |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+All access is enforced at the database level via Row-Level Security (RLS). Researchers see data only from facilities their approved projects explicitly cover.
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## Database
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+**Location:** AWS af-south-1 (Cape Town, South Africa)
+**Engine:** PostgreSQL 16 via self-hosted Supabase
+**Project:** `xvozzsoufirdxlnnlnky.supabase.co`
 
-## How can I deploy this project?
+### Core tables
+- `profiles` — user profiles linked to facilities
+- `user_roles` — role per user (`app_role` enum)
+- `facilities` — connected hospitals / EHR systems
+- `patients` — national patient registry (NIN as unique identifier)
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Clinical tables
+- `encounters` — patient visits (diagnosis, type, practitioner, date)
+- `vital_records` — BP, heart rate, temperature, weight, SpO2
+- `medications` — active / completed / discontinued prescriptions
+- `allergies` — substance, reaction, severity
+- `lab_results` — test results with reference ranges
 
-## Can I connect a custom domain to my Lovable project?
+### Researcher access (de-identified views)
+- `patients_deidentified` — demographics only, no PII
+- `encounters_deidentified` — diagnoses + demographics, no PII
+- `lab_results_deidentified` — test results + demographics, no PII
+- `medications_deidentified` — drug names + demographics, no PII
 
-Yes, you can!
+### Workflow tables
+- `staged_records` — incoming FHIR data awaiting admin approval
+- `facility_connections` — EHR connector config per facility
+- `sync_logs` — FHIR sync history and errors
+- `research_projects` / `research_project_facilities` / `research_project_audit` — researcher data access workflow
+- `audit_logs` — all user/system actions (NDPA compliance requirement)
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Local Development
+
+### Prerequisites
+- Node.js 18+ (via [nvm](https://github.com/nvm-sh/nvm))
+- npm
+
+### Setup
+
+```sh
+# Clone the repository
+git clone https://github.com/5-Six/CareVault.git
+cd CareVault
+
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env.local
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local
+
+# Start the dev server (connects to remote Supabase — no local mock)
+npm run dev
+# → http://localhost:5173
+```
+
+There is no local Supabase instance. The dev server connects directly to the remote Supabase project.
+
+---
+
+## Database Migrations
+
+All schema changes go in `supabase/migrations/` as timestamped SQL files:
+
+```sh
+# Apply all pending migrations
+supabase login
+supabase db push --linked
+
+# Run a specific SQL file directly (useful when migration history is out of sync)
+cat supabase/migrations/<file>.sql | supabase db query --linked --file /dev/stdin
+```
+
+**Rules:**
+- Never use `DROP TABLE` or `DROP COLUMN` — use soft deletes or nullable additions
+- Every new table must have RLS enabled and policies for all four roles
+- Commit migrations separately from code changes
+
+---
+
+## Production Deployment
+
+**Frontend** — Amplify auto-deploys on every push to `main`. No manual step needed.
+
+**Infrastructure (first-time or infra changes):**
+
+```sh
+cd infra/aws-cape-town
+terraform init
+terraform plan -var="db_password=$DB_PASS"
+terraform apply
+
+# Push Docker images to ECR
+aws ecr get-login-password --region af-south-1 | docker login --username AWS ...
+docker-compose build && docker-compose push
+```
+
+**Database migrations:**
+
+```sh
+supabase db push --linked
+```
+
+---
+
+## Compliance
+
+- **NDPA 2023** — every patient record view and search is logged to `audit_logs`
+- **GAID 2025** — all data stored in AWS af-south-1 (Africa)
+- **FHIR R4** — all EHR ingestion via the `ehr-connector` edge function; records land in `staged_records` (status = `pending`) and require admin approval before going live
+- **Auth** — sessions expire after 8 hours; minimum 12-character passwords
+- **Researcher access** — de-identified views only; re-identification attempts violate the data use agreement
+
+---
+
+## Git Workflow
+
+- Branch from `main` for features
+- Commit migrations separately from code changes
+- Never commit secrets — use `.env.local` (gitignored) or AWS Secrets Manager
