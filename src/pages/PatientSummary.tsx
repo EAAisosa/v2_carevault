@@ -177,7 +177,7 @@ export default function PatientSummary() {
         <TabsContent value="vitals">
           {vitals.length === 0 ? emptyState("vitals") : (
             <>
-              <VitalsChart data={vitalsData} />
+              <VitalsChart data={vitals} />
               <div className="mt-4 elevated-card rounded-xl overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
