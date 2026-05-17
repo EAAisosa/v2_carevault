@@ -57,11 +57,18 @@ export default function MyProjects() {
   });
 
   const load = async () => {
+    if (!user) return;
     setLoading(true);
-    const { data: ps } = await supabase
+    const { data: ps, error: psError } = await supabase
       .from("research_projects")
       .select("*")
+      .eq("created_by", user.id)
       .order("created_at", { ascending: false });
+    if (psError) {
+      toast({ title: "Error loading projects", description: psError.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
     setProjects(ps || []);
     if (ps && ps.length) {
       const { data: ds } = await supabase
@@ -75,7 +82,7 @@ export default function MyProjects() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (user) load(); }, [user?.id]);
 
   const create = async () => {
     if (!user) return;
