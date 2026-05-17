@@ -85,15 +85,22 @@ Deno.serve(async (req) => {
         throw createErr;
       }
 
-      // The DB trigger creates the user_roles row as 'clinician' by default.
-      // Update it to the intended role now that we've verified the caller has permission.
-      if (intendedRole !== "clinician") {
-        const { error: roleErr } = await supabaseAdmin
-          .from("user_roles")
-          .update({ role: intendedRole })
-          .eq("user_id", newUser.user.id);
-        if (roleErr) throw new Error(`User invited but role assignment failed: ${roleErr.message}`);
-      }
+      const userId = newUser.user.id;
+
+      // Upsert role — handles both: trigger already ran (update) and trigger hasn't run yet (insert).
+      const { error: roleErr } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: intendedRole }, { onConflict: "user_id" });
+      if (roleErr) throw new Error(`Role assignment failed: ${roleErr.message}`);
+
+      // Upsert profile — ensures full_name and facility_id are set regardless of trigger timing.
+      const { error: profileErr } = await supabaseAdmin
+        .from("profiles")
+        .upsert(
+          { id: userId, full_name, facility_id: facility_id || null },
+          { onConflict: "id" }
+        );
+      if (profileErr) throw new Error(`Profile assignment failed: ${profileErr.message}`);
 
       return jsonResponse({ ok: true, user: newUser.user });
     }
