@@ -13,20 +13,21 @@ const hospitalColors: Record<string, string> = {
 };
 
 export default function DataSourceBadge({ hospital }: DataSourceBadgeProps) {
-  const abbrev = hospital
+  const safe = hospital || "Unknown";
+  const abbrev = safe
     .split(" ")
     .filter((w) => w.length > 2)
     .map((w) => w[0])
     .join("")
     .slice(0, 4);
 
-  const colorClass = hospitalColors[hospital] || "bg-muted text-muted-foreground";
+  const colorClass = hospitalColors[safe] || "bg-muted text-muted-foreground";
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${colorClass}`}>
       {abbrev}
       <span className="hidden sm:inline font-normal normal-case tracking-normal text-[10px]">
-        {hospital.length > 25 ? hospital.slice(0, 25) + "…" : hospital}
+        {safe.length > 25 ? safe.slice(0, 25) + "…" : safe}
       </span>
     </span>
   );
