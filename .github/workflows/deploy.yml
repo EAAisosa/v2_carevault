@@ -1,12 +1,15 @@
-name: Deploy to AWS Amplify
+name: Typecheck
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+# Amplify auto-deploys from amplify.yml on every push to main — no manual trigger needed.
 
 jobs:
-  typecheck-and-deploy:
+  typecheck:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,17 +27,3 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Trigger Amplify deployment
-        run: |
-          aws amplify start-job \
-            --app-id ${{ secrets.AMPLIFY_APP_ID }} \
-            --branch-name main \
-            --job-type RELEASE
