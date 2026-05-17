@@ -107,24 +107,19 @@ export default function ResearchRequests() {
     setWorking(true);
     const row = decisions.find((d) => d.project_id === p.id && d.facility_id === facilityId);
     if (!row) { setWorking(false); return; }
-    await supabase.from("research_project_facilities").update({
+    const { error } = await supabase.from("research_project_facilities").update({
       status: decision,
       decision_notes: notes || null,
       decided_by: user.id,
       decided_at: new Date().toISOString(),
     }).eq("id", row.id);
-
-    // Check if all facility decisions complete → set project status
-    const { data: allDecisions } = await supabase
-      .from("research_project_facilities")
-      .select("status")
-      .eq("project_id", p.id);
-    if (allDecisions && allDecisions.every((d) => d.status !== "pending")) {
-      const anyApproved = allDecisions.some((d) => d.status === "approved");
-      await supabase.from("research_projects").update({
-        status: anyApproved ? "approved" : "rejected",
-      }).eq("id", p.id);
+    if (error) {
+      toast({ title: "Decision failed", description: error.message, variant: "destructive" });
+      setWorking(false);
+      return;
     }
+    // Project status is automatically updated by the trg_auto_finalize_research_project
+    // database trigger when all facility decisions are in.
     await supabase.from("research_project_audit").insert({
       project_id: p.id, actor_id: user.id, action: `facility_${decision}`,
       details: { facility_id: facilityId, notes },
