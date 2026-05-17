@@ -21,8 +21,8 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   )
 $$;
 
--- Callable only by the DB engine inside policies, not by authenticated clients directly.
-REVOKE EXECUTE ON FUNCTION public.user_owns_research_project(uuid, uuid) FROM PUBLIC, anon, authenticated;
+-- Must be callable by authenticated users (invoked inside RLS policy expressions).
+GRANT EXECUTE ON FUNCTION public.user_owns_research_project(uuid, uuid) TO authenticated;
 
 -- ── research_project_facilities ────────────────────────────────────────────
 
