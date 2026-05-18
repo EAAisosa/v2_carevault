@@ -154,10 +154,41 @@ Deno.serve(async (req) => {
       };
     });
 
+    // Find the active facility_connection (if any) for the log FK
+    const { data: conn } = await supabase
+      .from("facility_connections")
+      .select("id")
+      .eq("facility_id", facility_id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    // Create an inbound sync log entry
+    const { data: syncLog } = await supabase
+      .from("sync_logs")
+      .insert({
+        facility_connection_id: conn?.id || null,
+        facility_id,
+        direction: "inbound",
+        status: "in_progress",
+      })
+      .select("id")
+      .single();
+
     const { error: insertErr } = await supabase.from("staged_records").insert(records);
     if (insertErr) {
+      await supabase.from("sync_logs").update({
+        status: "failed",
+        error_message: insertErr.message,
+        completed_at: new Date().toISOString(),
+      }).eq("id", syncLog?.id);
       return new Response(JSON.stringify({ error: insertErr.message }), { status: 500, headers: corsHeaders });
     }
+
+    await supabase.from("sync_logs").update({
+      status: "completed",
+      records_processed: count,
+      completed_at: new Date().toISOString(),
+    }).eq("id", syncLog?.id);
 
     await supabase.from("facilities").update({ last_sync: new Date().toISOString() }).eq("id", facility_id);
 

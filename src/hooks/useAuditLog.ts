@@ -26,24 +26,24 @@ interface AuditOptions {
 }
 
 export function useAuditLog() {
-  const { user, fullName, role, facilityId } = useAuth();
+  const { user, fullName, role, facilityId, facilityName } = useAuth();
 
   const log = useCallback(
     async (action: AuditAction, opts: AuditOptions) => {
       if (!user) return;
       await supabase.from("audit_logs").insert({
-        user_id:      user.id,
-        user_name:    fullName || user.email || "Unknown",
+        user_id:       user.id,
+        user_name:     fullName || user.email || "Unknown",
         role,
         action,
-        resource:     opts.resource,
-        facility_id:  facilityId,
-        facility_name: "",   // resolved server-side via FK if needed
-        status:       opts.status ?? "success",
-        metadata:     opts.metadata ?? null,
+        resource:      opts.resource,
+        facility_id:   facilityId,
+        facility_name: facilityName,
+        status:        opts.status ?? "success",
+        metadata:      opts.metadata ?? null,
       });
     },
-    [user, fullName, role, facilityId]
+    [user, fullName, role, facilityId, facilityName]
   );
 
   return { log };

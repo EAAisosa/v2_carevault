@@ -70,7 +70,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">NHRIRP National Health Records — Overview</p>
+        <p className="text-sm text-muted-foreground">National Health Records — Overview</p>
       </div>
 
       <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${isAnyAdmin ? "xl:grid-cols-5" : "xl:grid-cols-3"}`}>
@@ -111,7 +111,7 @@ export default function Dashboard() {
           <div className="elevated-card rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-foreground">Recent Sync Activity</h3>
-              <Link to="/connectors" className="text-xs font-medium text-primary hover:underline">View all →</Link>
+              <Link to="/connections" className="text-xs font-medium text-primary hover:underline">View all →</Link>
             </div>
             <div className="space-y-3">
               {recentSyncs.length === 0 && (

@@ -171,7 +171,7 @@ export default function PatientSearch() {
               <User size={40} className="mx-auto text-muted-foreground/30" />
               <p className="mt-3 text-sm font-medium text-foreground">No patient found</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Patient may not be registered in NHRIRP. Consider registering locally with a new NIN link.
+                Patient may not be registered in CareVault. Consider registering locally with a new NIN link.
               </p>
             </div>
           ) : (

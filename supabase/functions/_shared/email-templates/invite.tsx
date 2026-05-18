@@ -47,8 +47,7 @@ export const InviteEmail = ({
           <Text style={text}>
             You have been granted access to{' '}
             <Link href={siteUrl} style={link}>CareVault</Link>
-            {' '}— Nigeria's secure, centralised health records platform operated under the
-            National Health Records Integration & Repository Programme (NHRIRP).
+            {' '}— Nigeria's secure, centralised national health records platform.
           </Text>
 
           <Text style={text}>

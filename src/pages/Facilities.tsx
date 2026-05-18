@@ -132,7 +132,7 @@ export default function Facilities() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Onboarded Facilities</h1>
-          <p className="text-sm text-muted-foreground">Manage hospitals connected to NHRIRP</p>
+          <p className="text-sm text-muted-foreground">Manage hospitals connected to CareVault</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

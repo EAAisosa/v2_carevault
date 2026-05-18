@@ -16,6 +16,7 @@ interface AuthContextType {
   isResearcher: boolean;
   fullName: string;
   facilityId: string | null;
+  facilityName: string;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>("clinician");
   const [fullName, setFullName] = useState("");
   const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [facilityName, setFacilityName] = useState("");
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
@@ -43,13 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name, facility_id")
+      .select("full_name, facility_id, facilities(name)")
       .eq("id", userId)
       .single();
 
     if (profile) {
       setFullName(profile.full_name);
       setFacilityId(profile.facility_id || null);
+      setFacilityName((profile.facilities as any)?.name || "");
     }
   };
 
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole("clinician");
           setFullName("");
           setFacilityId(null);
+          setFacilityName("");
         }
         setLoading(false);
       }
@@ -89,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole("clinician");
     setFullName("");
     setFacilityId(null);
+    setFacilityName("");
   }, []);
 
   const { showWarning, secondsLeft, staySignedIn } = useInactivityTimeout(signOut, !!session);
@@ -110,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isResearcher,
         fullName,
         facilityId,
+        facilityName,
         loading,
         signOut,
       }}
