@@ -83,8 +83,8 @@ const AppRoutes = () => (
               <Route path="/" element={<HomeRoute />} />
               <Route path="/search" element={<ClinicianRoute><PatientSearch /></ClinicianRoute>} />
               <Route path="/patient/:id" element={<ClinicianRoute><PatientSummary /></ClinicianRoute>} />
-              <Route path="/staging" element={<AdminRoute superOnly><StagingQueue /></AdminRoute>} />
-              <Route path="/integrated" element={<AdminRoute superOnly><IntegratedRecords /></AdminRoute>} />
+              <Route path="/staging" element={<AdminRoute><StagingQueue /></AdminRoute>} />
+              <Route path="/integrated" element={<AdminRoute><IntegratedRecords /></AdminRoute>} />
               <Route path="/facilities" element={<AdminRoute superOnly><Facilities /></AdminRoute>} />
               <Route path="/audit" element={<AdminRoute superOnly><AuditLogs /></AdminRoute>} />
               <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />

@@ -33,8 +33,8 @@ const navItems: NavItem[] = [
   { label: "Dashboard", path: "/", icon: <LayoutDashboard size={18} />, access: "clinician_portal" },
   { label: "Patient Search", path: "/search", icon: <Search size={18} />, access: "clinician_portal" },
   // Admin
-  { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, access: "carevault_admin" },
-  { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, access: "carevault_admin" },
+  { label: "Staging Queue", path: "/staging", icon: <GitMerge size={18} />, access: "any_admin" },
+  { label: "Integrated Records", path: "/integrated", icon: <Archive size={18} />, access: "any_admin" },
   { label: "Facilities", path: "/facilities", icon: <Building2 size={18} />, access: "carevault_admin" },
   { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, access: "any_admin" },
   { label: "User Management", path: "/users", icon: <Users size={18} />, access: "any_admin" },
