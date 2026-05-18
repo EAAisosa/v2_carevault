@@ -178,17 +178,14 @@ Deno.serve(async (req) => {
       const { data: { user: targetUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
       if (getUserErr || !targetUser?.email) throw new Error("Could not find user email");
 
-      // Generate a password reset link
-      const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-        type: "recovery",
-        email: targetUser.email,
-        options: {
-          redirectTo: getRedirectUrl("/reset-password"),
-        },
-      });
-      if (linkErr) throw linkErr;
+      // Send a password reset email via GoTrue (uses configured SMTP / Resend)
+      const { error: resetErr } = await supabaseAdmin.auth.resetPasswordForEmail(
+        targetUser.email,
+        { redirectTo: getRedirectUrl("/reset-password") }
+      );
+      if (resetErr) throw resetErr;
 
-      return jsonResponse({ ok: true, success: true, message: `Password reset link generated for ${targetUser.email}` });
+      return jsonResponse({ ok: true, success: true, message: `Password reset email sent to ${targetUser.email}` });
     }
 
     if (action === "resend_invite") {
