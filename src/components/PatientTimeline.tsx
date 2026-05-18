@@ -24,7 +24,7 @@ export default function PatientTimeline({ encounters, vitals, medications, labRe
     ? medications.filter((m) => m.prescribed_by === selected.practitioner || m.facility_name === selected.facility_name)
     : [];
   const relatedLabs = selected
-    ? labResults.filter((l) => l.test_date === selected.encounter_date || l.facility_name === selected.facility_name)
+    ? labResults.filter((l) => l.result_date === selected.encounter_date || l.facility_name === selected.facility_name)
     : [];
   const relatedAllergies = selected
     ? allergies.filter((a) => a.facility_name === selected.facility_name)
@@ -46,7 +46,7 @@ export default function PatientTimeline({ encounters, vitals, medications, labRe
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">{enc.diagnosis}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{enc.encounter_type} · {enc.practitioner}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{enc.type} · {enc.practitioner}</p>
                   <DataSourceBadge hospital={enc.facility_name} />
                 </div>
               </div>
@@ -69,7 +69,7 @@ export default function PatientTimeline({ encounters, vitals, medications, labRe
               <DialogHeader>
                 <DialogTitle>{selected.diagnosis}</DialogTitle>
                 <DialogDescription>
-                  {selected.encounter_date} · {selected.encounter_type} · {selected.facility_name}
+                  {selected.encounter_date} · {selected.type} · {selected.facility_name}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -130,7 +130,7 @@ export default function PatientTimeline({ encounters, vitals, medications, labRe
                       : relatedLabs.map((l) => (
                           <div key={l.id} className="flex justify-between items-center py-3 border-b last:border-0 text-xs">
                             <div>
-                              <p className="font-medium text-foreground">{l.test_name}</p>
+                              <p className="font-medium text-foreground">{l.test}</p>
                               <p className="font-mono text-muted-foreground">{l.result} {l.unit}</p>
                             </div>
                             <StatusBadge status={l.status} />

@@ -10,12 +10,12 @@ import DataSourceBadge from "@/components/DataSourceBadge";
 import StatusBadge from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type PatientRow   = Tables<"patients"> & { facilities: { name: string } | null };
-type Encounter    = Tables<"encounters">;
-type VitalRecord  = Tables<"vital_records">;
-type Medication   = Tables<"medications">;
-type Allergy      = Tables<"allergies">;
-type LabResult    = Tables<"lab_results">;
+type PatientRow        = Tables<"patients"> & { facilities: { name: string } | null };
+export type Encounter  = Tables<"encounters">;
+export type VitalRecord= Tables<"vital_records">;
+export type Medication = Tables<"medications">;
+export type Allergy    = Tables<"allergies">;
+export type LabResult  = Tables<"lab_results">;
 
 export default function PatientSummary() {
   const { id } = useParams();
@@ -78,18 +78,6 @@ export default function PatientSummary() {
   }
 
   const severeAllergies = allergies.filter((a) => a.severity === "severe");
-
-  // Shape encounters into the format PatientTimeline expects
-  const timelineEncounters = encounters.map((e) => ({
-    id: e.id,
-    date: e.encounter_date,
-    hospital: e.facility_name,
-    practitioner: e.practitioner,
-    type: e.type,
-    diagnosis: e.diagnosis,
-    notes: e.notes,
-    status: e.status as "completed" | "in-progress",
-  }));
 
   // Shape vitals into the format VitalsChart expects
   const vitalsData = vitals.map((v) => ({
@@ -171,7 +159,15 @@ export default function PatientSummary() {
         </TabsList>
 
         <TabsContent value="timeline">
-          {encounters.length === 0 ? emptyState("encounter") : <PatientTimeline encounters={timelineEncounters} />}
+          {encounters.length === 0 ? emptyState("encounter") : (
+            <PatientTimeline
+              encounters={encounters}
+              vitals={vitals}
+              medications={medications}
+              labResults={labResults}
+              allergies={allergies}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="vitals">
