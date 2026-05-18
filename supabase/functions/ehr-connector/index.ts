@@ -148,6 +148,7 @@ interface EHRConnectionConfig {
     client_secret?: string;
     token_url?: string;
     api_key?: string;
+    header?: string;
     api_key_header?: string;
   };
   fhir_version: string;
@@ -175,7 +176,7 @@ async function getAuthHeaders(config: EHRConnectionConfig): Promise<Record<strin
       return { Authorization: `Bearer ${tokenData.access_token}` };
     }
     case "api_key": {
-      return { [creds.api_key_header || "X-API-Key"]: creds.api_key! };
+      return { [creds.header || creds.api_key_header || "X-API-Key"]: creds.api_key! };
     }
     default:
       return {};
@@ -259,6 +260,19 @@ Deno.serve(async (req) => {
 
     const { action, ...params } = await req.json();
 
+    // Helper: build EHRConnectionConfig with decrypted credentials
+    const buildConfig = async (conn: any): Promise<EHRConnectionConfig> => {
+      const { data: creds } = await supabase.rpc("get_decrypted_ehr_credentials", {
+        p_connection_id: conn.id,
+      });
+      return {
+        base_url:        conn.base_url,
+        auth_type:       conn.auth_type,
+        auth_credentials: creds ?? conn.auth_credentials ?? {},
+        fhir_version:    conn.fhir_version,
+      };
+    };
+
     switch (action) {
       // ---- PULL: Fetch records from a remote EHR ----
       case "pull": {
@@ -279,6 +293,8 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: "Connection not found or inactive" }), { status: 404, headers: corsHeaders });
         }
 
+        const config = await buildConfig(conn);
+
         // Create sync log
         const { data: syncLog } = await supabase.from("sync_logs").insert({
           facility_connection_id: conn.id,
@@ -289,7 +305,7 @@ Deno.serve(async (req) => {
 
         try {
           // Pull patient data from EHR
-          const bundle = await pullFromEHR(conn as EHRConnectionConfig, "Patient?_revinclude=*&_count=50");
+          const bundle = await pullFromEHR(config, "Patient?_revinclude=*&_count=50");
           const records = mapFHIRBundle(bundle);
 
           // Get facility name
@@ -384,8 +400,10 @@ Deno.serve(async (req) => {
           status: "in_progress",
         }).select("id").single();
 
+        const config = await buildConfig(conn);
+
         try {
-          await pushToEHR(conn as EHRConnectionConfig, record.fhir_resource_type || "Bundle", record.fhir_payload);
+          await pushToEHR(config, record.fhir_resource_type || "Bundle", record.fhir_payload);
 
           await supabase.from("sync_logs").update({
             status: "completed",
@@ -489,7 +507,8 @@ Deno.serve(async (req) => {
 
           try {
             if (log.direction === "inbound") {
-              const bundle = await pullFromEHR(conn as EHRConnectionConfig, "Patient?_revinclude=*&_count=50");
+              const config = await buildConfig(conn);
+              const bundle = await pullFromEHR(config, "Patient?_revinclude=*&_count=50");
               const records = mapFHIRBundle(bundle);
               const { data: facility } = await supabase.from("facilities").select("name").eq("id", conn.facility_id).single();
 

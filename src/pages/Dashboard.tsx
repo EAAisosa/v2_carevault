@@ -13,21 +13,30 @@ type SyncLog = Tables<"sync_logs"> & { facilities: { name: string } | null };
 export default function Dashboard() {
   const { isAnyAdmin, isCareVaultAdmin } = useAuth();
 
-  const [stats, setStats] = useState({ totalPatients: 0, totalFacilities: 0, pendingMerges: 0 });
+  const [stats, setStats] = useState({ totalPatients: 0, totalFacilities: 0, pendingMerges: 0, totalEncounters: 0, todaySearches: 0 });
   const [recentStaging, setRecentStaging] = useState<StagedRecord[]>([]);
   const [recentSyncs, setRecentSyncs] = useState<SyncLog[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const [pRes, fRes, pendingRes] = await Promise.all([
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const [pRes, fRes, pendingRes, encRes, searchRes] = await Promise.all([
         supabase.from("patients").select("id", { count: "exact", head: true }),
         supabase.from("facilities").select("id", { count: "exact", head: true }),
         supabase.from("staged_records").select("id", { count: "exact", head: true }).in("status", ["pending", "needs-review"]),
+        supabase.from("encounters").select("id", { count: "exact", head: true }),
+        supabase.from("audit_logs").select("id", { count: "exact", head: true })
+          .eq("action", "PATIENT_SEARCH")
+          .gte("created_at", todayStart.toISOString()),
       ]);
       setStats({
         totalPatients: pRes.count || 0,
         totalFacilities: fRes.count || 0,
         pendingMerges: pendingRes.count || 0,
+        totalEncounters: encRes.count || 0,
+        todaySearches: searchRes.count || 0,
       });
     };
 
@@ -66,10 +75,10 @@ export default function Dashboard() {
 
       <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${isAnyAdmin ? "xl:grid-cols-5" : "xl:grid-cols-3"}`}>
         <StatsCard label="Total Patients" value={stats.totalPatients.toLocaleString()} icon={<Users size={20} />} trend="Live from DB" trendUp />
-        <StatsCard label="Total Encounters" value="—" icon={<Database size={20} />} trend="Not yet available" />
+        <StatsCard label="Total Encounters" value={stats.totalEncounters.toLocaleString()} icon={<Database size={20} />} trend="Live from DB" trendUp />
         {isAnyAdmin && <StatsCard label="Facilities Connected" value={stats.totalFacilities} icon={<Activity size={20} />} />}
         {isAnyAdmin && <StatsCard label="Pending Merges" value={stats.pendingMerges} icon={<GitMerge size={20} />} trend="Live from DB" trendUp />}
-        <StatsCard label="Today's Searches" value="—" icon={<Search size={20} />} trend="Not yet available" />
+        <StatsCard label="Today's Searches" value={stats.todaySearches.toLocaleString()} icon={<Search size={20} />} trend="Live from DB" trendUp />
       </div>
 
       <div className={`grid gap-6 ${isAnyAdmin ? "lg:grid-cols-2" : ""}`}>
@@ -116,7 +125,8 @@ export default function Dashboard() {
                       {log.facilities?.name || "Unknown Facility"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {log.direction.toUpperCase()} • {log.records_processed} records
+                      {(log.direction || "inbound").toUpperCase()} • {log.records_processed ?? 0} records
+                      {" · "}{new Date(log.started_at).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                   <StatusBadge status={log.status} />
