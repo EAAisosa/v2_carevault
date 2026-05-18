@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Building2, MapPin, Plus, Loader2 } from "lucide-react";
+import { RefreshCw, Building2, MapPin, Plus, Loader2, WifiOff, Wifi, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import StatusBadge from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,12 +51,16 @@ function SyncButton({ facilityId, onSynced }: { facilityId: string; onSynced: ()
   );
 }
 
+type StatusAction = { facility: Facility; nextStatus: Facility["status"] };
+
 export default function Facilities() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newFacility, setNewFacility] = useState({ name: "", facility_code: "", location: "", state: "", ehr_system: "OpenMRS" });
   const [saving, setSaving] = useState(false);
+  const [statusAction, setStatusAction] = useState<StatusAction | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
   const fetchFacilities = async () => {
     setLoading(true);
@@ -95,6 +100,22 @@ export default function Facilities() {
       fetchFacilities();
     }
     setSaving(false);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusAction) return;
+    const { facility, nextStatus } = statusAction;
+    setStatusUpdating(facility.id);
+    setStatusAction(null);
+    const { error } = await supabase.from("facilities").update({ status: nextStatus }).eq("id", facility.id);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    } else {
+      const label = nextStatus === "online" ? "reconnected" : nextStatus === "degraded" ? "degraded" : "disconnected";
+      toast({ title: `Facility ${label}`, description: `${facility.name} is now ${nextStatus}.` });
+      setFacilities((prev) => prev.map((f) => f.id === facility.id ? { ...f, status: nextStatus } : f));
+    }
+    setStatusUpdating(null);
   };
 
   const totalRecords = facilities.reduce((sum, f) => sum + f.records_count, 0);
@@ -221,11 +242,94 @@ export default function Facilities() {
                   </span>
                   <SyncButton facilityId={f.id} onSynced={fetchFacilities} />
                 </div>
+
+                <div className="flex items-center gap-2 border-t pt-3">
+                  {statusUpdating === f.id ? (
+                    <Loader2 size={12} className="animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      {f.status !== "online" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[10px] gap-1 text-success border-success/30 hover:bg-success/5"
+                          onClick={() => setStatusAction({ facility: f, nextStatus: "online" })}
+                        >
+                          <Wifi size={10} /> Reconnect
+                        </Button>
+                      )}
+                      {f.status === "online" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[10px] gap-1 text-warning border-warning/30 hover:bg-warning/5"
+                          onClick={() => setStatusAction({ facility: f, nextStatus: "degraded" })}
+                        >
+                          <AlertTriangle size={10} /> Degrade
+                        </Button>
+                      )}
+                      {f.status !== "offline" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[10px] gap-1 text-destructive border-destructive/30 hover:bg-destructive/5"
+                          onClick={() => setStatusAction({ facility: f, nextStatus: "offline" })}
+                        >
+                          <WifiOff size={10} /> Disconnect
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!statusAction} onOpenChange={(o) => !o && setStatusAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {statusAction?.nextStatus === "online" && "Reconnect facility?"}
+              {statusAction?.nextStatus === "degraded" && "Degrade facility?"}
+              {statusAction?.nextStatus === "offline" && "Disconnect facility?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusAction?.nextStatus === "online" && (
+                <>
+                  <strong>{statusAction.facility.name}</strong> will be marked as <strong>online</strong>. EHR syncs will resume normally.
+                </>
+              )}
+              {statusAction?.nextStatus === "degraded" && (
+                <>
+                  <strong>{statusAction.facility.name}</strong> will be marked as <strong>degraded</strong>. The facility remains connected but sync reliability will be flagged as reduced.
+                </>
+              )}
+              {statusAction?.nextStatus === "offline" && (
+                <>
+                  <strong>{statusAction.facility.name}</strong> will be marked as <strong>offline</strong>. All EHR syncs for this facility will be suspended until it is reconnected.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStatusChange}
+              className={
+                statusAction?.nextStatus === "offline"
+                  ? "bg-destructive hover:bg-destructive/90"
+                  : statusAction?.nextStatus === "degraded"
+                  ? "bg-warning hover:bg-warning/90 text-warning-foreground"
+                  : ""
+              }
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
