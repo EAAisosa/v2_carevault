@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub as string;
 
     // Check admin role
-    const { data: roleData } = await supabase.rpc("has_role", { _user_id: userId, _role: "administrator" });
+    const { data: roleData } = await supabase.rpc("has_role", { _user_id: userId, _role: "carevault_admin" });
     if (!roleData) {
       return new Response(JSON.stringify({ error: "Admin access required" }), { status: 403, headers: corsHeaders });
     }
