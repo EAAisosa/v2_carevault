@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +26,7 @@ interface StagedRecord {
 }
 
 export default function StagingQueue() {
+  const { log } = useAuditLog();
   const [filter, setFilter] = useState<string>("all");
   const [records, setRecords] = useState<StagedRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,11 +65,19 @@ export default function StagingQueue() {
 
   const handleIntegrate = async (r: StagedRecord) => {
     await updateRecord(r.id, { status: "approved" });
+    await log("STAGING_APPROVE", {
+      resource: `StagedRecord/${r.id}`,
+      metadata: { patient: r.patient_name, nin: r.nin, facility: r.source_facility_name, data_type: r.data_type },
+    });
     toast({ title: "Record integrated", description: `${r.patient_name}'s record has been approved.` });
   };
 
   const handleNeedsReview = async (r: StagedRecord) => {
     await updateRecord(r.id, { status: "needs-review" });
+    await log("STAGING_NEEDS_REVIEW", {
+      resource: `StagedRecord/${r.id}`,
+      metadata: { patient: r.patient_name, nin: r.nin, facility: r.source_facility_name },
+    });
   };
 
   const handleFlag = (record: StagedRecord) => {
@@ -79,6 +89,10 @@ export default function StagingQueue() {
   const saveFlag = async () => {
     if (!flagTarget) return;
     await updateRecord(flagTarget.id, { flagged: true, admin_notes: noteText });
+    await log("STAGING_FLAG", {
+      resource: `StagedRecord/${flagTarget.id}`,
+      metadata: { patient: flagTarget.patient_name, nin: flagTarget.nin, note: noteText, action: "flagged" },
+    });
     setFlagDialogOpen(false);
     setFlagTarget(null);
     setNoteText("");
@@ -87,6 +101,10 @@ export default function StagingQueue() {
   const removeFlag = async () => {
     if (!flagTarget) return;
     await updateRecord(flagTarget.id, { flagged: false, admin_notes: null });
+    await log("STAGING_FLAG", {
+      resource: `StagedRecord/${flagTarget.id}`,
+      metadata: { patient: flagTarget.patient_name, nin: flagTarget.nin, action: "unflagged" },
+    });
     setFlagDialogOpen(false);
     setFlagTarget(null);
     setNoteText("");

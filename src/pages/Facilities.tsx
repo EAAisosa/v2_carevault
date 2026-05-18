@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RefreshCw, Building2, MapPin, Plus, Loader2, WifiOff, Wifi, AlertTriangle } from "lucide-react";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import StatusBadge from "@/components/StatusBadge";
@@ -54,6 +55,7 @@ function SyncButton({ facilityId, onSynced }: { facilityId: string; onSynced: ()
 type StatusAction = { facility: Facility; nextStatus: Facility["status"] };
 
 export default function Facilities() {
+  const { log } = useAuditLog();
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -112,6 +114,10 @@ export default function Facilities() {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
     } else {
       const label = nextStatus === "online" ? "reconnected" : nextStatus === "degraded" ? "degraded" : "disconnected";
+      await log("FACILITY_STATUS_CHANGE", {
+        resource: `Facility/${facility.id}`,
+        metadata: { facility_name: facility.name, from: facility.status, to: nextStatus },
+      });
       toast({ title: `Facility ${label}`, description: `${facility.name} is now ${nextStatus}.` });
       setFacilities((prev) => prev.map((f) => f.id === facility.id ? { ...f, status: nextStatus } : f));
     }

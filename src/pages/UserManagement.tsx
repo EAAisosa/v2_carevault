@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +66,7 @@ interface ManagedUser {
 
 export default function UserManagement() {
   const { user, isCareVaultAdmin } = useAuth();
+  const { log } = useAuditLog();
   const { toast } = useToast();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,6 +151,10 @@ export default function UserManagement() {
         role: inviteForm.role,
         facility_id: targetFacilityId,
       });
+      await log("USER_INVITE", {
+        resource: `User/${inviteForm.email}`,
+        metadata: { email: inviteForm.email, role: inviteForm.role, facility_id: targetFacilityId },
+      });
       toast({ title: "Invitation sent", description: `An invite email has been sent to ${inviteForm.email}.` });
       setInviteOpen(false);
       setInviteForm({ email: "", full_name: "", role: "clinician", facility_id: "" });
@@ -164,6 +170,7 @@ export default function UserManagement() {
     setActionLoading(userId);
     try {
       await callManageUsers("update_role", { user_id: userId, role: newRole });
+      await log("USER_ROLE_CHANGE", { resource: `User/${userId}`, metadata: { new_role: newRole } });
       toast({ title: "Role updated" });
       fetchUsers();
     } catch (err: any) {
@@ -177,6 +184,7 @@ export default function UserManagement() {
     setActionLoading(userId);
     try {
       await callManageUsers(currentlyBanned ? "activate" : "deactivate", { user_id: userId });
+      await log(currentlyBanned ? "USER_ACTIVATE" : "USER_DEACTIVATE", { resource: `User/${userId}` });
       toast({ title: currentlyBanned ? "User activated" : "User deactivated" });
       fetchUsers();
     } catch (err: any) {
@@ -190,6 +198,7 @@ export default function UserManagement() {
     setActionLoading(userId);
     try {
       const data = await callManageUsers("reset_password", { user_id: userId });
+      await log("USER_PASSWORD_RESET", { resource: `User/${userId}`, metadata: { email } });
       toast({ title: "Password reset sent", description: data.message || `Reset link sent to ${email}` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -202,6 +211,7 @@ export default function UserManagement() {
     setActionLoading(userId);
     try {
       const data = await callManageUsers("resend_invite", { user_id: userId });
+      await log("USER_INVITE_RESENT", { resource: `User/${userId}`, metadata: { email } });
       toast({ title: "Invite resent", description: data.message || `Invite resent to ${email}` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -215,6 +225,7 @@ export default function UserManagement() {
     setActionLoading(userId);
     try {
       await callManageUsers("delete", { user_id: userId });
+      await log("USER_DELETE", { resource: `User/${userId}`, metadata: { email } });
       toast({ title: "User deleted" });
       fetchUsers();
     } catch (err: any) {

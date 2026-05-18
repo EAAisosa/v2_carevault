@@ -52,6 +52,11 @@ export default function FacilityConnections() {
   const [authType, setAuthType] = useState("basic");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [tokenUrl, setTokenUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyHeader, setApiKeyHeader] = useState("Authorization");
   const [syncDirection, setSyncDirection] = useState("pull");
   const [syncInterval, setSyncInterval] = useState("60");
 
@@ -96,7 +101,10 @@ export default function FacilityConnections() {
         ehr_type: ehrType,
         base_url: baseUrl,
         auth_type: authType,
-        auth_credentials: authType === "basic" ? { username, password } : {},
+        auth_credentials:
+          authType === "basic" ? { username, password } :
+          authType === "oauth2" ? { client_id: clientId, client_secret: clientSecret, token_url: tokenUrl } :
+          authType === "api_key" ? { api_key: apiKey, header: apiKeyHeader } : {},
         sync_direction: syncDirection,
         sync_interval_minutes: parseInt(syncInterval),
       });
@@ -164,6 +172,11 @@ export default function FacilityConnections() {
     setAuthType("basic");
     setUsername("");
     setPassword("");
+    setClientId("");
+    setClientSecret("");
+    setTokenUrl("");
+    setApiKey("");
+    setApiKeyHeader("Authorization");
     setSyncDirection("pull");
     setSyncInterval("60");
   }
@@ -242,6 +255,36 @@ export default function FacilityConnections() {
                   <div>
                     <Label>Password</Label>
                     <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                </div>
+              )}
+              {authType === "oauth2" && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Client ID</Label>
+                      <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="client_id" />
+                    </div>
+                    <div>
+                      <Label>Client Secret</Label>
+                      <Input type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="client_secret" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Token URL</Label>
+                    <Input value={tokenUrl} onChange={(e) => setTokenUrl(e.target.value)} placeholder="https://ehr.hospital.ng/oauth/token" />
+                  </div>
+                </div>
+              )}
+              {authType === "api_key" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>API Key</Label>
+                    <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="••••••••" />
+                  </div>
+                  <div>
+                    <Label>Header Name</Label>
+                    <Input value={apiKeyHeader} onChange={(e) => setApiKeyHeader(e.target.value)} placeholder="Authorization" />
                   </div>
                 </div>
               )}
