@@ -154,7 +154,23 @@ pnpm --filter @repo/db exec prisma migrate deploy
 pnpm --filter @repo/db exec prisma generate
 ```
 
-### 4 — Start the dev servers
+### 4 — Seed the database (dev only)
+
+Populates facilities, test patients, clinical records, and **three test user accounts**:
+
+```sh
+pnpm --filter @repo/db db:seed
+```
+
+| Email | Password | Role |
+| ----- | -------- | ---- |
+| `admin@carevault.ng` | `Admin1234!` | `carevault_admin` — full access |
+| `clinician@luth.ng` | `Clinician1234!` | `clinician` — read patients |
+| `fadmin@luth.ng` | `FAdmin1234!` | `facility_admin` — manage LUTH users |
+
+> The seed is idempotent — safe to run multiple times.
+
+### 5 — Start the dev servers
 
 ```sh
 pnpm turbo dev
@@ -168,6 +184,8 @@ Or run each separately:
 pnpm --filter @repo/api dev      # Express API
 pnpm --filter carevault-web dev  # Next.js frontend
 ```
+
+Open [http://localhost:3000](http://localhost:3000) and log in with any of the seeded accounts above.
 
 ---
 

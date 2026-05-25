@@ -1,25 +1,23 @@
 /**
- * Seed script for development.
- * Run: pnpm --filter @repo/db db:seed
+ * Development seed — run once after `prisma migrate deploy`.
+ * Command: pnpm --filter @repo/db db:seed
  *
  * Creates:
- * - 2 facilities (Lagos University Teaching Hospital, Abuja National Hospital)
- * - 4 patients with full clinical records
- * - Facility connections for each facility
- *
- * NOTE: Auth users (clinician, admin, etc.) must be seeded via Supabase
- * dashboard or the seed-test-users Edge Function (supabase/functions/seed-test-users/).
- * Prisma cannot write to auth.users — that table is GoTrue-managed.
+ *   - 3 test user accounts (admin, clinician, facility_admin)
+ *   - 2 facilities (LUTH, Abuja National Hospital)
+ *   - Facility connections for each facility
+ *   - 4 patients with clinical records for the first patient
  */
 
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient({ log: ["query"] });
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Seeding CareVault database...");
 
-  // ── Facilities ──────────────────────────────────────────────────────────
+  // ── Facilities (created first — users reference them) ───────────────────
   const luth = await prisma.facility.upsert({
     where: { facilityCode: "LUTH-001" },
     update: {},
@@ -52,7 +50,70 @@ async function main() {
 
   console.log(`✅ Facilities: ${luth.name}, ${anh.name}`);
 
-  // ── Facility Connections ────────────────────────────────────────────────
+  // ── Test users ──────────────────────────────────────────────────────────
+  // Passwords use cost factor 12 — same as production auth service
+  const [adminHash, clinicianHash, fadminHash] = await Promise.all([
+    bcrypt.hash("Admin1234!", 12),
+    bcrypt.hash("Clinician1234!", 12),
+    bcrypt.hash("FAdmin1234!", 12),
+  ]);
+
+  const users: Array<{
+    email: string;
+    passwordHash: string;
+    fullName: string;
+    facilityId: string | null;
+    role: "carevault_admin" | "clinician" | "facility_admin";
+  }> = [
+    {
+      email: "admin@carevault.ng",
+      passwordHash: adminHash,
+      fullName: "CareVault Admin",
+      facilityId: null,
+      role: "carevault_admin",
+    },
+    {
+      email: "clinician@luth.ng",
+      passwordHash: clinicianHash,
+      fullName: "Dr. Chioma Eze",
+      facilityId: luth.id,
+      role: "clinician",
+    },
+    {
+      email: "fadmin@luth.ng",
+      passwordHash: fadminHash,
+      fullName: "LUTH Facility Admin",
+      facilityId: luth.id,
+      role: "facility_admin",
+    },
+  ];
+
+  for (const u of users) {
+    const profile = await prisma.profile.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        email: u.email,
+        passwordHash: u.passwordHash,
+        fullName: u.fullName,
+        facilityId: u.facilityId,
+        isActive: true,
+      },
+    });
+
+    await prisma.userRole.upsert({
+      where: { userId: profile.id },
+      update: {},
+      create: { userId: profile.id, role: u.role },
+    });
+  }
+
+  console.log("✅ Test users created:");
+  console.log("   admin@carevault.ng   / Admin1234!       (carevault_admin)");
+  console.log("   clinician@luth.ng    / Clinician1234!   (clinician)");
+  console.log("   fadmin@luth.ng       / FAdmin1234!      (facility_admin)");
+
+  // ── Facility connections ─────────────────────────────────────────────────
   await prisma.facilityConnection.upsert({
     where: { facilityId_ehrType: { facilityId: luth.id, ehrType: "OpenMRS" } },
     update: {},
@@ -87,8 +148,8 @@ async function main() {
 
   console.log("✅ Facility connections created");
 
-  // ── Patients ────────────────────────────────────────────────────────────
-  const patients = [
+  // ── Patients ─────────────────────────────────────────────────────────────
+  const patientData = [
     {
       nin: "NG-NIN-001-2000",
       firstName: "Adaeze",
@@ -144,7 +205,7 @@ async function main() {
   ];
 
   const createdPatients = [];
-  for (const p of patients) {
+  for (const p of patientData) {
     const patient = await prisma.patient.upsert({
       where: { nin: p.nin },
       update: {},
@@ -155,7 +216,7 @@ async function main() {
 
   console.log(`✅ Patients: ${createdPatients.length} created`);
 
-  // ── Clinical data for first patient ─────────────────────────────────────
+  // ── Clinical data for first patient (Adaeze) ─────────────────────────────
   const adaeze = createdPatients[0]!;
 
   await prisma.encounter.createMany({
@@ -164,7 +225,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         practitioner: "Dr. Chioma Eze",
         encounterDate: new Date("2026-04-10"),
         type: "Outpatient",
@@ -175,7 +236,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         practitioner: "Dr. Femi Adeyemi",
         encounterDate: new Date("2026-02-20"),
         type: "Outpatient",
@@ -192,7 +253,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         recordedDate: new Date("2026-04-10"),
         systolic: 128,
         diastolic: 82,
@@ -210,7 +271,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         name: "Amlodipine 5mg",
         dosage: "5mg",
         frequency: "Once daily",
@@ -221,7 +282,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         name: "Metformin 500mg",
         dosage: "500mg",
         frequency: "Twice daily",
@@ -238,7 +299,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         substance: "Penicillin",
         reaction: "Anaphylaxis",
         severity: "severe",
@@ -254,7 +315,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         test: "HbA1c",
         result: "6.8",
         unit: "%",
@@ -265,7 +326,7 @@ async function main() {
       {
         patientId: adaeze.id,
         facilityId: luth.id,
-        facilityName: "Lagos University Teaching Hospital",
+        facilityName: luth.name,
         test: "Fasting Blood Glucose",
         result: "5.9",
         unit: "mmol/L",
@@ -276,14 +337,12 @@ async function main() {
     ],
   });
 
-  console.log("✅ Clinical records for Adaeze Okonkwo created");
-
-  // ── Update facility record counts ────────────────────────────────────────
   await prisma.facility.update({
     where: { id: luth.id },
     data: { recordsCount: 2 },
   });
 
+  console.log("✅ Clinical records for Adaeze Okonkwo created");
   console.log("✅ Seed complete");
 }
 
