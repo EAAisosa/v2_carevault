@@ -95,7 +95,7 @@ Access is enforced at the service layer in `apps/api`.
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (pnpm 11 requires it)
 - pnpm 9+
 - PostgreSQL 16 running locally (or a remote Postgres instance you can connect to)
 
