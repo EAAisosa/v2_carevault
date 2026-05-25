@@ -1,0 +1,59 @@
+import "express-async-errors";
+import express, { type Application } from "express";
+import helmet from "helmet";
+import cors from "cors";
+import { pinoHttp } from "pino-http";
+import { config } from "./config";
+import { logger } from "./lib/logger";
+import { correlationId } from "./middleware/correlationId";
+import { apiLimiter } from "./middleware/rateLimiter";
+import { errorHandler } from "./middleware/errorHandler";
+import routes from "./routes";
+
+export function createApp(): Application {
+  const app = express();
+
+  app.set("trust proxy", 1);
+
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
+
+  app.use(
+    cors({
+      origin: config.cors.allowedOrigins,
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Authorization", "Content-Type", "X-Correlation-ID"],
+    }),
+  );
+
+  app.use(
+    pinoHttp({
+      logger,
+      customLogLevel(_req, res) {
+        return res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
+      },
+      customSuccessMessage(req, res) {
+        return `${req.method} ${req.url} ${res.statusCode}`;
+      },
+      redact: ["req.headers.authorization", "req.body.password", "req.body.credentials"],
+    }),
+  );
+
+  app.use(correlationId);
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ extended: true }));
+
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", service: "carevault-api", env: config.isProd ? "production" : "development" });
+  });
+
+  app.use("/api/v1", apiLimiter, routes);
+
+  app.use(errorHandler);
+
+  return app;
+}
