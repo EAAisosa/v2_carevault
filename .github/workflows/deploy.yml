@@ -32,7 +32,7 @@ jobs:
           restore-keys: pnpm-${{ runner.os }}-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --allow-scripts
 
       - name: Type check
         run: pnpm turbo typecheck
