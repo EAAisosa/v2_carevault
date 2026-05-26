@@ -13,7 +13,7 @@ Nigeria's **National Health Records Integration & Repository Programme** platfor
 | Database         | PostgreSQL 16                                               |
 | Infrastructure   | AWS af-south-1 (Cape Town) — all data stays in Africa       |
 | EHR Integration  | FHIR R4 via `apps/api` sync service                         |
-| Monorepo         | Turborepo + pnpm workspaces                                 |
+| Monorepo         | Turborepo + npm workspaces                                 |
 
 ---
 
@@ -95,14 +95,14 @@ Access is enforced at the service layer in `apps/api`.
 
 ### Prerequisites
 
-- Node.js 22+ (pnpm 11 requires it)
-- pnpm 9+
+- Node.js 22+
+
 - PostgreSQL 16 running locally (or a remote Postgres instance you can connect to)
 
 ### 1 — Install dependencies
 
 ```sh
-pnpm install
+npm install
 ```
 
 ### 2 — Configure environment variables
@@ -148,10 +148,10 @@ Create the database, then run Prisma migrations:
 createdb carevault
 
 # Run all migrations
-pnpm --filter @repo/db exec prisma migrate deploy
+npm run db:migrate -w @repo/db
 
 # Generate the Prisma client
-pnpm --filter @repo/db exec prisma generate
+npm run db:generate -w @repo/db
 ```
 
 ### 4 — Seed the database (dev only)
@@ -159,7 +159,7 @@ pnpm --filter @repo/db exec prisma generate
 Populates facilities, test patients, clinical records, and **three test user accounts**:
 
 ```sh
-pnpm --filter @repo/db db:seed
+npm run db:seed -w @repo/db
 ```
 
 | Email | Password | Role |
@@ -173,7 +173,7 @@ pnpm --filter @repo/db db:seed
 ### 5 — Start the dev servers
 
 ```sh
-pnpm turbo dev
+npm run dev
 # API  → http://localhost:4000
 # Web  → http://localhost:3000
 ```
@@ -181,8 +181,8 @@ pnpm turbo dev
 Or run each separately:
 
 ```sh
-pnpm --filter @repo/api dev      # Express API
-pnpm --filter carevault-web dev  # Next.js frontend
+npm run dev -w @repo/api      # Express API
+npm run dev -w carevault-web  # Next.js frontend
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and log in with any of the seeded accounts above.
@@ -216,13 +216,13 @@ Base path: `/api/v1`
 
 ```sh
 # Create a new migration during development
-pnpm --filter @repo/db exec prisma migrate dev --name describe-your-change
+npm run db:migrate:dev -w @repo/db -- --name describe-your-change
 
 # Apply pending migrations (CI / production)
-pnpm --filter @repo/db exec prisma migrate deploy
+npm run db:migrate -w @repo/db
 
 # Open Prisma Studio (local DB browser)
-pnpm --filter @repo/db exec prisma studio
+npm run db:studio -w @repo/db
 ```
 
 ---
@@ -231,14 +231,14 @@ pnpm --filter @repo/db exec prisma studio
 
 ```sh
 # Typecheck all packages
-pnpm turbo typecheck
+npm run typecheck
 
 # Build all packages
-pnpm turbo build
+npm run build
 
 # Build a single app
-pnpm --filter @repo/api build
-pnpm --filter carevault-web build
+npm run build -w @repo/api
+npm run build -w carevault-web
 ```
 
 ---

@@ -11,7 +11,7 @@
     "@types/fhir": "^0.0.41"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
+    "@repo/config": "*",
     "@types/node": "^22.0.0",
     "typescript": "^5.8.3"
   }

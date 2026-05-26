@@ -21,7 +21,7 @@
     "@radix-ui/react-toast": "^1.2.6",
     "@radix-ui/react-toggle": "^1.1.4",
     "@radix-ui/react-tooltip": "^1.2.4",
-    "@repo/types": "workspace:*",
+    "@repo/types": "*",
     "@tanstack/react-query": "^5.66.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -35,7 +35,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
+    "@repo/config": "*",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

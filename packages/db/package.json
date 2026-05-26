@@ -19,7 +19,7 @@
     "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
+    "@repo/config": "*",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "prisma": "^6.6.0",

@@ -2,10 +2,12 @@
   "name": "carevault",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@11.1.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
-    "node": ">=22.13.0",
-    "pnpm": ">=11.0.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "turbo dev",
@@ -20,7 +22,7 @@
     "db:seed": "turbo db:seed"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
+    "@repo/config": "*",
     "prettier": "^3.4.2",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
