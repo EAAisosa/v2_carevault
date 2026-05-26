@@ -97,40 +97,56 @@ All enforced at DB level via Row-Level Security. Never bypass RLS.
 
 ## Current Priorities
 
-1. **Run the new migration** `20260516000000_clinical_tables.sql` against the Supabase instance
-2. **Wire audit logging** — add `supabase.from('audit_logs').insert(...)` calls in PatientSearch and PatientSummary on every view/search event
-3. **Active FHIR sync scheduler** — build an edge function that polls `facility_connections` and triggers `ehr-connector` on `sync_interval_minutes` cadence
-4. **NIN ↔ MRN matching** — when a staged record's NIN doesn't match any `patients` row, implement fuzzy matching on name + DOB + phone before creating a new patient record
-5. **AWS Cape Town deployment** — apply Terraform in `infra/aws-cape-town/`, then deploy Docker Compose via ECS
+1. **Wire audit logging** — add `prisma.auditLog.create(...)` calls in PatientSearch and PatientSummary on every view/search event
+2. **Active FHIR sync scheduler** — build a scheduled endpoint in `apps/api` that polls `facility_connections` and triggers the sync service on `sync_interval_minutes` cadence
+3. **NIN ↔ MRN matching** — when a staged record's NIN doesn't match any `patients` row, implement fuzzy matching on name + DOB + phone before creating a new patient record
+4. **Infrastructure** — owner will wire their own DB + deployment when ready
 
 ## Running Locally
 
 ```bash
 npm install
-npm run dev          # Vite dev server on :5173
+
+# Copy and fill in env files
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+cp packages/db/.env.example packages/db/.env
+
+# Set up the database
+createdb carevault
+npm run db:migrate -w @repo/db
+npm run db:generate -w @repo/db
+npm run db:seed -w @repo/db       # creates test users + sample data
+
+# Start both servers
+npm run dev
+# API → http://localhost:4000
+# Web → http://localhost:3000
 ```
 
-Connect to the real Supabase instance — there is no local mock server. Set:
+Required env vars — `apps/api/.env`:
+
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/carevault
+JWT_SECRET=<openssl rand -hex 64>
+JWT_REFRESH_SECRET=<openssl rand -hex 64>
+ALLOWED_ORIGINS=http://localhost:3000
+APP_URL=http://localhost:3000
 ```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+
+Required env vars — `apps/web/.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 ```
 
-## Deployment (AWS af-south-1)
+## Deployment
 
-```bash
-cd infra/aws-cape-town
-terraform init
-terraform plan -var="db_password=$DB_PASS"
-terraform apply
+Infrastructure is owner-managed. When ready:
 
-# Push Docker images to ECR
-aws ecr get-login-password --region af-south-1 | docker login --username AWS ...
-docker-compose build && docker-compose push
-
-# Apply Supabase migrations
-supabase db push --db-url postgresql://supabase_admin:$PASS@$RDS_HOST:5432/postgres
-```
+- Database: PostgreSQL 16, run `npm run db:migrate -w @repo/db` against the production DB
+- API: build with `npm run build -w @repo/api`, run `node dist/index.js` (set `NODE_ENV=production`)
+- Web: build with `npm run build -w carevault-web`, deploy `.next/` output
 
 ## Git Workflow
 
