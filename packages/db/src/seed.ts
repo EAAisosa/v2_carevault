@@ -1,6 +1,6 @@
 /**
  * Development seed — run once after `prisma migrate deploy`.
- * Command: pnpm --filter @repo/db db:seed
+ * Command: npm run db:seed -w @repo/db
  *
  * Creates:
  *   - 3 test user accounts (admin, clinician, facility_admin)
