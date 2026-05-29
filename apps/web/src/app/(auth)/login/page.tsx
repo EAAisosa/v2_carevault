@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { createApiClient } from "@/lib/api-client";
+import { useForgotPassword } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,29 +13,36 @@ import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, isResearcher } = useAuth();
+  const { signIn, accessToken, isResearcher } = useAuth();
+  const forgot = useForgotPassword();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  // Redirect after AuthContext has actually applied the new profile —
+  // reading isResearcher synchronously after signIn() captures the stale value.
+  useEffect(() => {
+    if (accessToken) {
+      router.replace(isResearcher ? "/research" : "/dashboard");
+    }
+  }, [accessToken, isResearcher, router]);
+
+  const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       toast.error("Please enter your email address");
       return;
     }
-    setLoading(true);
-    try {
-      await createApiClient(null).post("/auth/forgot-password", { email });
-      setResetSent(true);
-      toast.success("If that email exists, a reset link has been sent");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to send reset link");
-    } finally {
-      setLoading(false);
-    }
+    // Always show the same outcome regardless of whether the email exists, to
+    // prevent enumeration. Both success and failure resolve to the same UI.
+    forgot.mutate(email, {
+      onSettled: () => {
+        setResetSent(true);
+        toast.success("If that email exists, a reset link has been sent");
+      },
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +51,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       toast.success("Signed in successfully");
-      router.push(isResearcher ? "/research" : "/dashboard");
+      // The redirect happens in the effect above once context updates.
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
     } finally {
@@ -124,8 +131,8 @@ export default function LoginPage() {
                 </div>
               ) : (
                 <>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading && <Loader2 className="animate-spin" />}
+                  <Button type="submit" className="w-full" disabled={forgot.isPending}>
+                    {forgot.isPending && <Loader2 className="animate-spin" />}
                     Send Reset Link
                   </Button>
                   <button

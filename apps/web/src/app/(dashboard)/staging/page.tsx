@@ -1,39 +1,44 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Check, X, Eye, AlertCircle, Filter, Flag, MessageSquare, Building2, User, FileText, Clock, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Check, Eye, AlertCircle, Filter, Flag, MessageSquare, Building2, User, FileText, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
+import {
+  useStagedRecords,
+  useApproveStagedRecord,
+  useNeedsReviewStagedRecord,
+  useFlagStagedRecord,
+} from "@/api/staged-records";
 import { toast } from "sonner";
 import type { StagedRecord } from "@repo/types";
 
 export default function StagingQueuePage() {
-  const api = useApi();
   const [filter, setFilter] = useState("all");
-  const [records, setRecords] = useState<StagedRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<StagedRecord | null>(null);
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const [flagTarget, setFlagTarget] = useState<StagedRecord | null>(null);
   const [noteText, setNoteText] = useState("");
-  const [acting, setActing] = useState<string | null>(null);
 
-  const fetchRecords = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api.get<{ records: StagedRecord[] }>("/staged-records?pageSize=100");
-      setRecords(data.records);
-    } catch (err) {
-      toast.error("Failed to load staging records");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const query = useStagedRecords({ pageSize: 100 });
 
-  useEffect(() => { fetchRecords(); }, []);
+  const records = query.data?.records ?? [];
+  const loading = query.isPending;
+
+  const integrate = useApproveStagedRecord();
+  const markNeedsReview = useNeedsReviewStagedRecord();
+  const flagMutation = useFlagStagedRecord();
+
+  const onIntegrate = (r: StagedRecord) =>
+    integrate.mutate(r, {
+      onSuccess: () => toast.success(`${r.patientName}'s record integrated`),
+      onError: () => toast.error("Failed to approve record"),
+    });
+
+  const onNeedsReview = (r: StagedRecord) =>
+    markNeedsReview.mutate(r, { onError: () => toast.error("Failed to update status") });
 
   const nonIntegrated = records.filter((r) => r.status !== "approved");
   const filtered =
@@ -41,40 +46,27 @@ export default function StagingQueuePage() {
     : filter === "flagged" ? nonIntegrated.filter((r) => r.flagged)
     : nonIntegrated.filter((r) => r.status === filter);
 
-  const handleIntegrate = async (r: StagedRecord) => {
-    setActing(r.id);
-    try {
-      await api.post(`/staged-records/${r.id}/approve`);
-      toast.success(`${r.patientName}'s record integrated`);
-      fetchRecords();
-    } catch { toast.error("Failed to approve record"); }
-    finally { setActing(null); }
-  };
-
-  const handleNeedsReview = async (r: StagedRecord) => {
-    setActing(r.id);
-    try {
-      await api.post(`/staged-records/${r.id}/needs-review`);
-      fetchRecords();
-    } catch { toast.error("Failed to update status"); }
-    finally { setActing(null); }
-  };
-
   const handleFlag = (record: StagedRecord) => {
     setFlagTarget(record);
     setNoteText(record.adminNotes ?? "");
     setFlagDialogOpen(true);
   };
 
-  const saveFlag = async () => {
+  const saveFlag = () => {
     if (!flagTarget) return;
-    try {
-      await api.post(`/staged-records/${flagTarget.id}/flag`);
-      toast.success("Record flagged");
-      setFlagDialogOpen(false);
-      fetchRecords();
-    } catch { toast.error("Failed to flag record"); }
+    flagMutation.mutate(
+      { id: flagTarget.id },
+      {
+        onSuccess: () => {
+          toast.success("Record flagged");
+          setFlagDialogOpen(false);
+        },
+        onError: () => toast.error("Failed to flag record"),
+      }
+    );
   };
+
+  const acting = integrate.isPending ? integrate.variables?.id : null;
 
   return (
     <div className="space-y-6">
@@ -125,10 +117,10 @@ export default function StagingQueuePage() {
                     <Button variant="outline" size="sm" onClick={() => handleFlag(r)} className={`text-xs gap-1.5 ${r.flagged ? "text-warning border-warning/30" : ""}`}>
                       <Flag size={12} /> {r.flagged ? "Edit Flag" : "Flag"}
                     </Button>
-                    <Button size="sm" className="text-xs gap-1.5 bg-success hover:bg-success/90" onClick={() => handleIntegrate(r)} disabled={acting === r.id}>
+                    <Button size="sm" className="text-xs gap-1.5 bg-success hover:bg-success/90" onClick={() => onIntegrate(r)} disabled={acting === r.id}>
                       {acting === r.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Integrate
                     </Button>
-                    <Button variant="outline" size="sm" className="text-xs gap-1.5 text-warning border-warning/30" onClick={() => handleNeedsReview(r)}>
+                    <Button variant="outline" size="sm" className="text-xs gap-1.5 text-warning border-warning/30" onClick={() => onNeedsReview(r)}>
                       <AlertCircle size={12} /> Needs Review
                     </Button>
                   </div>

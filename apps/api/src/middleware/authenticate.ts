@@ -23,7 +23,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
   let claims: JWTPayload;
   try {
-    claims = jwt.verify(token, config.jwtSecret) as JWTPayload;
+    claims = jwt.verify(token, config.jwtSecret, { algorithms: ["HS256"] }) as JWTPayload;
   } catch {
     res.status(StatusCodes.UNAUTHORIZED).json({ error: "Invalid or expired token" });
     return;

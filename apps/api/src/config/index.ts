@@ -17,10 +17,17 @@ export const config = {
   jwtSecret: required("JWT_SECRET"),
   jwtRefreshSecret: required("JWT_REFRESH_SECRET"),
 
+  // 32 raw bytes (base64-encoded) used by lib/crypto.ts for AES-256-GCM.
+  // Generate one with: openssl rand -base64 32
+  encryptionKey: required("ENCRYPTION_KEY"),
+
   cronSecret: required("CRON_SECRET"),
 
   cors: {
-    allowedOrigins: (process.env["ALLOWED_ORIGINS"] ?? "http://localhost:3000").split(","),
+    allowedOrigins: (process.env["ALLOWED_ORIGINS"] ?? "http://localhost:3000")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
   },
 
   appUrl: process.env["APP_URL"] ?? "http://localhost:3000",

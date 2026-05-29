@@ -1,23 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FlaskConical, ClipboardList, Database, Loader2 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
-import type { ResearchProject } from "@repo/types";
+import { useMyResearchProjects } from "@/api/research";
 
 export default function ResearchDashboardPage() {
-  const api = useApi();
-  const [projects, setProjects] = useState<ResearchProject[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<ResearchProject[]>("/research-projects/my")
-      .then(setProjects)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const query = useMyResearchProjects();
+  const projects = query.data ?? [];
+  const loading = query.isPending;
 
   const approved = projects.filter((p) => p.status === "approved");
 

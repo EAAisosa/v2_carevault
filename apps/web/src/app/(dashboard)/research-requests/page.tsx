@@ -1,40 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Inbox, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
+import { useAllResearchProjects, useDecideResearchProject } from "@/api/research";
 import { toast } from "sonner";
-import type { ResearchProject } from "@repo/types";
 
 export default function ResearchRequestsPage() {
-  const api = useApi();
-  const [projects, setProjects] = useState<ResearchProject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const query = useAllResearchProjects();
+  const projects = query.data ?? [];
+  const loading = query.isPending;
 
-  useEffect(() => {
-    api.get<ResearchProject[]>("/research-projects")
-      .then(setProjects)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const decide = useDecideResearchProject();
 
-  const handleApprove = async (id: string) => {
-    try {
-      await api.patch(`/research-projects/${id}`, { status: "approved" });
-      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, status: "approved" as ResearchProject["status"] } : p));
-      toast.success("Research project approved");
-    } catch { toast.error("Failed to approve project"); }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      await api.patch(`/research-projects/${id}`, { status: "rejected" });
-      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, status: "rejected" as ResearchProject["status"] } : p));
-      toast.success("Research project rejected");
-    } catch { toast.error("Failed to reject project"); }
-  };
+  const handleApprove = (id: string) => decide.mutate(
+    { id, status: "approved" },
+    { onSuccess: () => toast.success("Research project approved"), onError: () => toast.error("Failed to update project") },
+  );
+  const handleReject = (id: string) => decide.mutate(
+    { id, status: "rejected" },
+    { onSuccess: () => toast.success("Research project rejected"), onError: () => toast.error("Failed to update project") },
+  );
 
   const pending = projects.filter((p) => p.status === "pending_carevault");
   const reviewed = projects.filter((p) => p.status !== "pending_carevault");

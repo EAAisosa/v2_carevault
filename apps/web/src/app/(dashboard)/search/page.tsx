@@ -5,47 +5,28 @@ import { useRouter } from "next/navigation";
 import { Search, User, AlertCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useApi } from "@/hooks/useApi";
-import type { Patient } from "@repo/types";
-
-interface PatientResult extends Patient {
-  facilityName?: string;
-  matchConfidence?: number;
-}
+import { useSearchPatients } from "@/api/patients";
 
 export default function PatientSearchPage() {
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState<"nin" | "demographics">("nin");
-  const [results, setResults] = useState<PatientResult[]>([]);
-  const [searched, setSearched] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [demoFields, setDemoFields] = useState({ firstName: "", lastName: "", dob: "", phone: "", gender: "" });
   const router = useRouter();
-  const api = useApi();
 
-  const buildQuery = () => {
-    if (searchType === "nin") return `?q=${encodeURIComponent(query)}`;
-    const params = new URLSearchParams();
-    if (demoFields.firstName) params.set("firstName", demoFields.firstName);
-    if (demoFields.lastName) params.set("lastName", demoFields.lastName);
-    if (demoFields.dob) params.set("dob", demoFields.dob);
-    if (demoFields.phone) params.set("phone", demoFields.phone);
-    if (demoFields.gender) params.set("gender", demoFields.gender);
-    return `?${params.toString()}`;
-  };
+  const mutation = useSearchPatients();
 
-  const handleSearch = async () => {
-    setSearched(true);
-    setLoading(true);
-    try {
-      const data = await api.get<{ records: PatientResult[] }>(`/patients${buildQuery()}`);
-      setResults(data.records);
-    } catch (err) {
-      console.error("Search error:", err);
-      setResults([]);
+  const handleSearch = () => {
+    if (searchType === "nin") {
+      mutation.mutate({ q: query });
+    } else {
+      const q = [demoFields.firstName, demoFields.lastName].filter(Boolean).join(" ");
+      mutation.mutate({ q, ...demoFields });
     }
-    setLoading(false);
   };
+
+  const results = mutation.data?.data ?? [];
+  const loading = mutation.isPending;
+  const searched = mutation.isSuccess || mutation.isError;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -135,10 +116,10 @@ export default function PatientSearchPage() {
                     <p className="text-base font-semibold text-foreground">{p.firstName} {p.lastName}</p>
                     <p className="text-xs text-muted-foreground font-mono mt-0.5">NIN: {p.nin}</p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>{p.gender === "Male" ? "♂" : "♀"} {p.gender}</span>
+                      <span>{p.gender}</span>
                       <span>DOB: {p.dateOfBirth}</span>
-                      {p.phone && <span>📞 {p.phone}</span>}
-                      {p.bloodGroup && <span>🩸 {p.bloodGroup} / {p.genotype}</span>}
+                      {p.phone && <span>Phone: {p.phone}</span>}
+                      {p.bloodGroup && <span>Blood: {p.bloodGroup} / {p.genotype}</span>}
                     </div>
                     {p.lga && <p className="mt-1 text-xs text-muted-foreground">{p.lga}, {p.state}</p>}
                   </div>

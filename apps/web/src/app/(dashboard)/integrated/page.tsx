@@ -1,22 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Archive, Loader2 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
-import type { StagedRecord } from "@repo/types";
+import { useStagedRecords } from "@/api/staged-records";
 
 export default function IntegratedRecordsPage() {
-  const api = useApi();
-  const [records, setRecords] = useState<StagedRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<{ records: StagedRecord[] }>("/staged-records?status=approved&pageSize=100")
-      .then((data) => setRecords(data.records))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const query = useStagedRecords({ status: "approved", pageSize: 100 });
+  const records = query.data?.records ?? [];
+  const loading = query.isPending;
 
   return (
     <div className="space-y-6">

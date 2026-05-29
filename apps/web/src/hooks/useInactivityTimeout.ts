@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
-const WARNING_BEFORE = 10 * 1000;
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+const WARNING_BEFORE = 60 * 1000;
 
 export function useInactivityTimeout(onTimeout: () => void, enabled: boolean) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showWarning, setShowWarning] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(10);
+  const [secondsLeft, setSecondsLeft] = useState(Math.ceil(WARNING_BEFORE / 1000));
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearAllTimers = useCallback(() => {
@@ -21,7 +21,7 @@ export function useInactivityTimeout(onTimeout: () => void, enabled: boolean) {
   const resetTimer = useCallback(() => {
     clearAllTimers();
     setShowWarning(false);
-    setSecondsLeft(10);
+    setSecondsLeft(Math.ceil(WARNING_BEFORE / 1000));
 
     if (enabled) {
       warningTimerRef.current = setTimeout(() => {

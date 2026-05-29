@@ -39,7 +39,3 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
   }
   next();
 }
-
-export function isSuperAdmin(req: Request): boolean {
-  return req.user?.role === "carevault_admin";
-}

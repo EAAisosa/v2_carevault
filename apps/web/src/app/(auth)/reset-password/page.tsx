@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createApiClient } from "@/lib/api-client";
+import { useResetPassword } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +16,10 @@ function ResetPasswordForm() {
   const token = searchParams.get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
+  const reset = useResetPassword();
+  const loading = reset.isPending;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) {
       toast.error("Passwords do not match");
@@ -32,16 +33,16 @@ function ResetPasswordForm() {
       toast.error("Invalid or missing reset token");
       return;
     }
-    setLoading(true);
-    try {
-      await createApiClient(null).post("/auth/reset-password", { token, password });
-      toast.success("Password updated successfully");
-      router.push("/login");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update password");
-    } finally {
-      setLoading(false);
-    }
+    reset.mutate(
+      { token, password },
+      {
+        onSuccess: () => {
+          toast.success("Password updated successfully");
+          router.push("/login");
+        },
+        onError: (err) => toast.error(err.message || "Failed to update password"),
+      }
+    );
   };
 
   return (

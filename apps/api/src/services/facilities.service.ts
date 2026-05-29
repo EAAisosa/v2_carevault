@@ -36,7 +36,16 @@ export async function updateFacility(
   return prisma.facility.update({ where: { id }, data });
 }
 
-export async function updateFacilityStatus(id: string, status: FacilityStatus) {
+export async function updateFacilityStatus(
+  id: string,
+  status: FacilityStatus,
+  role: AppRole,
+  callerFacilityId: string | null
+) {
+  // facility_admin can only flip status for their own facility; carevault_admin is unrestricted.
+  if (role === "facility_admin" && id !== callerFacilityId) {
+    throw new AppError("Facility not found", StatusCodes.NOT_FOUND);
+  }
   const facility = await prisma.facility.findUnique({ where: { id } });
   if (!facility) throw new AppError("Facility not found", StatusCodes.NOT_FOUND);
   return prisma.facility.update({ where: { id }, data: { status } });

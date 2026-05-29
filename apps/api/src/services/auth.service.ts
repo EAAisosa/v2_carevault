@@ -20,12 +20,16 @@ export interface LoginResult {
   };
 }
 
-const ACCESS_TTL_SECONDS = 8 * 60 * 60; // 8 hours
-const REFRESH_TTL_DAYS = 30;
+export const ACCESS_TTL_SECONDS = 8 * 60 * 60; // 8 hours
+export const REFRESH_TTL_DAYS = 30;
+export const REFRESH_TTL_SECONDS = REFRESH_TTL_DAYS * 24 * 60 * 60;
 
 function signAccess(userId: string, email: string): { token: string; expiresAt: number } {
   const expiresAt = Math.floor(Date.now() / 1000) + ACCESS_TTL_SECONDS;
-  const token = jwt.sign({ sub: userId, email }, config.jwtSecret, { expiresIn: ACCESS_TTL_SECONDS });
+  const token = jwt.sign({ sub: userId, email }, config.jwtSecret, {
+    expiresIn: ACCESS_TTL_SECONDS,
+    algorithm: "HS256",
+  });
   return { token, expiresAt };
 }
 
@@ -79,8 +83,17 @@ export async function login(email: string, password: string): Promise<LoginResul
 export async function refreshSession(refreshToken: string): Promise<LoginResult> {
   const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
 
-  if (!stored || stored.revokedAt !== null || stored.expiresAt < new Date()) {
+  if (!stored || stored.expiresAt < new Date()) {
     throw new AppError("Invalid or expired refresh token", StatusCodes.UNAUTHORIZED);
+  }
+
+  // Reuse of a revoked token is a theft signal — revoke the whole chain for this user.
+  if (stored.revokedAt !== null) {
+    await prisma.refreshToken.updateMany({
+      where: { userId: stored.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    throw new AppError("Refresh token reuse detected", StatusCodes.UNAUTHORIZED);
   }
 
   // Rotate: revoke old token before issuing new one
@@ -114,7 +127,14 @@ export async function forgotPassword(email: string): Promise<void> {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-  await prisma.passwordResetToken.create({ data: { userId: profile.id, token, expiresAt } });
+  // Invalidate any prior unused reset tokens for this user before issuing a new one.
+  await prisma.$transaction([
+    prisma.passwordResetToken.updateMany({
+      where: { userId: profile.id, usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+    prisma.passwordResetToken.create({ data: { userId: profile.id, token, expiresAt } }),
+  ]);
 
   // TODO: wire email provider — reset URL is:
   // `${config.appUrl}/reset-password?token=${token}`

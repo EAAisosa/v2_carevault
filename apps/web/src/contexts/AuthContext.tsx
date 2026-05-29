@@ -1,18 +1,16 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createApiClient } from "@/lib/api-client";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import InactivityWarningModal from "@/components/InactivityWarningModal";
 import type { AppRole } from "@repo/types";
 
-const STORAGE_KEY = "carevault-auth";
-
-interface StoredTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-}
+// Auth state lives in memory only. The refresh token sits in an httpOnly cookie
+// set by the API at /auth/login and /auth/refresh — never touchable from JS, so
+// XSS can't exfiltrate it. The access token is short-lived (8h) and held in
+// React state. On a fresh tab we silently try /auth/refresh; if the cookie is
+// missing/expired the user lands on the login page.
 
 interface UserProfile {
   id: string;
@@ -21,6 +19,12 @@ interface UserProfile {
   fullName: string;
   facilityId: string | null;
   facilityName: string | null;
+}
+
+interface SessionResponse {
+  accessToken: string;
+  expiresAt: number;
+  user: UserProfile;
 }
 
 interface AuthContextType {
@@ -38,141 +42,75 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refresh: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function loadTokens(): StoredTokens | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as StoredTokens) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveTokens(tokens: StoredTokens) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
-}
-
-function clearTokens() {
-  localStorage.removeItem(STORAGE_KEY);
-}
+const EMPTY_PROFILE: UserProfile = {
+  id: "",
+  email: "",
+  role: "clinician",
+  fullName: "",
+  facilityId: null,
+  facilityName: null,
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<AppRole>("clinician");
-  const [fullName, setFullName] = useState("");
-  const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [facilityName, setFacilityName] = useState("");
+  const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [loading, setLoading] = useState(true);
 
-  const applyProfile = (p: UserProfile) => {
-    setUserId(p.id);
-    setEmail(p.email);
-    setRole(p.role);
-    setFullName(p.fullName);
-    setFacilityId(p.facilityId);
-    setFacilityName(p.facilityName ?? "");
-  };
+  // The current access token in a ref so callbacks (signOut, refresh) always
+  // see the latest value without re-creating the api-client each render.
+  const tokenRef = useRef<string | null>(null);
+  tokenRef.current = accessToken;
 
   const clearAuth = useCallback(() => {
     setAccessToken(null);
-    setRefreshToken(null);
-    setUserId(null);
-    setEmail("");
-    setRole("clinician");
-    setFullName("");
-    setFacilityId(null);
-    setFacilityName("");
-    clearTokens();
+    setProfile(EMPTY_PROFILE);
   }, []);
 
-  const tryRefresh = useCallback(
-    async (rToken: string): Promise<string | null> => {
-      try {
-        const result = await createApiClient(null).post<{
-          accessToken: string;
-          refreshToken: string;
-          expiresAt: number;
-          user: UserProfile;
-        }>("/auth/refresh", { refreshToken: rToken });
-
-        saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken, expiresAt: result.expiresAt });
-        setAccessToken(result.accessToken);
-        setRefreshToken(result.refreshToken);
-        applyProfile(result.user);
-        return result.accessToken;
-      } catch {
-        clearAuth();
-        return null;
-      }
-    },
-    [clearAuth]
-  );
-
-  useEffect(() => {
-    const stored = loadTokens();
-    if (!stored) {
-      setLoading(false);
-      return;
+  const refresh = useCallback(async (): Promise<string | null> => {
+    try {
+      const result = await createApiClient(null).post<SessionResponse>("/auth/refresh");
+      setAccessToken(result.accessToken);
+      setProfile(result.user);
+      return result.accessToken;
+    } catch {
+      clearAuth();
+      return null;
     }
+  }, [clearAuth]);
 
-    const isExpired = stored.expiresAt < Math.floor(Date.now() / 1000);
-
-    (async () => {
-      let token = stored.accessToken;
-
-      if (isExpired) {
-        const refreshed = await tryRefresh(stored.refreshToken);
-        if (!refreshed) {
-          setLoading(false);
-          return;
-        }
-        token = refreshed;
-      } else {
-        setAccessToken(token);
-        setRefreshToken(stored.refreshToken);
-      }
-
-      try {
-        const data = await createApiClient(token).get<UserProfile>("/auth/me");
-        applyProfile(data);
-      } catch {
-        clearAuth();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [tryRefresh, clearAuth]);
+  // On mount, attempt a silent refresh. The cookie is httpOnly so we can't
+  // peek at it; the only signal is whether /auth/refresh succeeds.
+  useEffect(() => {
+    void refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
   const signIn = useCallback(async (emailInput: string, password: string) => {
-    const result = await createApiClient(null).post<{
-      accessToken: string;
-      refreshToken: string;
-      expiresAt: number;
-      user: UserProfile;
-    }>("/auth/login", { email: emailInput, password });
-
-    saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken, expiresAt: result.expiresAt });
+    const result = await createApiClient(null).post<SessionResponse>("/auth/login", {
+      email: emailInput,
+      password,
+    });
     setAccessToken(result.accessToken);
-    setRefreshToken(result.refreshToken);
-    applyProfile(result.user);
+    setProfile(result.user);
   }, []);
 
   const signOut = useCallback(async () => {
-    if (accessToken && refreshToken) {
-      await createApiClient(accessToken).post("/auth/logout", { refreshToken }).catch(() => {});
-    }
+    const token = tokenRef.current;
+    // Tear down local state first — UI must not stay interactive while the
+    // network call lingers.
     clearAuth();
-  }, [accessToken, refreshToken, clearAuth]);
+    if (token) {
+      void createApiClient(token).post("/auth/logout").catch(() => {});
+    }
+  }, [clearAuth]);
 
   const { showWarning, secondsLeft, staySignedIn } = useInactivityTimeout(signOut, !!accessToken);
 
+  const role = profile.role;
   const isCareVaultAdmin = role === "carevault_admin";
   const isFacilityAdmin = role === "facility_admin";
   const isAnyAdmin = isCareVaultAdmin || isFacilityAdmin;
@@ -182,19 +120,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         accessToken,
-        userId,
-        email,
+        userId: profile.id || null,
+        email: profile.email,
         role,
         isCareVaultAdmin,
         isFacilityAdmin,
         isAnyAdmin,
         isResearcher,
-        fullName,
-        facilityId,
-        facilityName,
+        fullName: profile.fullName,
+        facilityId: profile.facilityId,
+        facilityName: profile.facilityName ?? "",
         loading,
         signIn,
         signOut,
+        refresh,
       }}
     >
       {children}

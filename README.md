@@ -6,31 +6,35 @@ Nigeria's **National Health Records Integration & Repository Programme** platfor
 
 ## Tech Stack
 
-| Layer            | Technology                                                  |
-| ---------------- | ----------------------------------------------------------- |
-| Frontend         | Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui  |
-| Backend          | Express 4 REST API — Prisma ORM, bcrypt + stateless JWT auth |
-| Database         | PostgreSQL 16                                               |
-| Infrastructure   | AWS af-south-1 (Cape Town) — all data stays in Africa       |
-| EHR Integration  | FHIR R4 via `apps/api` sync service                         |
-| Monorepo         | Turborepo + npm workspaces                                 |
+| Layer            | Technology                                                                       |
+| ---------------- | -------------------------------------------------------------------------------- |
+| Frontend         | Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query       |
+| Backend          | Express 4 REST API — Prisma 6, JWT access in memory + refresh in httpOnly cookie |
+| Database         | PostgreSQL 16 (production: AWS RDS)                                              |
+| At-rest crypto   | AES-256-GCM (app layer) for EHR credentials; bcrypt(12) for passwords            |
+| EHR Integration  | FHIR R4 client + bundle mappers in `@repo/fhir`                                  |
+| Tests            | Vitest                                                                           |
+| Monorepo         | Turborepo + npm workspaces, TypeScript 5.9                                       |
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full system map.
 
 ---
 
 ## Repository Structure
 
-```
+```text
 apps/
   api/          Express 4 REST API (port 4000)
-                  Prisma ORM, bcrypt + stateless JWT, role-based access control
-  web/          Next.js 14 App Router
-                  shadcn/ui, Tailwind CSS, localStorage token management
+                  Prisma ORM, JWT access in memory + refresh in httpOnly cookie,
+                  AES-256-GCM for EHR credentials, role-based access control
+  web/          Next.js 14 App Router (port 3000)
+                  shadcn/ui, Tailwind, TanStack Query, path-based role gating
 
 packages/
-  types/        Shared TypeScript interfaces (@repo/types)
-  db/           Prisma schema + singleton client (@repo/db)
-  fhir/         FHIR R4 bundle mapping + EHR pull utilities (@repo/fhir)
-  config/       Shared tsconfig / eslint / tailwind base configs (@repo/config)
+  types/        Shared TypeScript interfaces (@repo/types) — consumed by both apps
+  db/           Prisma schema + singleton client + seed (@repo/db)
+  fhir/         FHIR R4 client + bundle mapping (@repo/fhir)
+  config/       Shared tsconfig base configs (@repo/config)
 ```
 
 ---
@@ -117,20 +121,25 @@ cp packages/db/.env.example packages/db/.env
 
 **`apps/api/.env`** — required variables:
 
-| Variable             | Description                                                                    |
-| -------------------- | ------------------------------------------------------------------------------ |
+| Variable             | Description                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------- |
 | `DATABASE_URL`       | Postgres connection string, e.g. `postgresql://user:pass@localhost:5432/carevault` |
-| `JWT_SECRET`         | Strong random secret for signing access tokens (min 64 chars)                  |
-| `JWT_REFRESH_SECRET` | Separate strong random secret for refresh tokens                               |
-| `CRON_SECRET`        | Secret for the internal auto-sync cron endpoint                                |
-| `ALLOWED_ORIGINS`    | Comma-separated frontend origins for CORS                                      |
-| `APP_URL`            | Public URL of the web app (used in reset/invite links)                         |
+| `JWT_SECRET`         | Strong random secret for signing access tokens (min 64 chars)                      |
+| `JWT_REFRESH_SECRET` | Separate strong random secret for refresh tokens                                   |
+| `ENCRYPTION_KEY`     | 32 raw bytes, base64-encoded — AES-256-GCM key for EHR credentials                 |
+| `CRON_SECRET`        | Secret for the internal auto-sync cron endpoint                                    |
+| `ALLOWED_ORIGINS`    | Comma-separated frontend origins for CORS                                          |
+| `APP_URL`            | Public URL of the web app (used in reset/invite links)                             |
+
+**`packages/db/.env`** also needs `DATABASE_URL` and `ENCRYPTION_KEY` so the seed
+script can encrypt fixture credentials with the same key the API will decrypt them with.
 
 Generate secrets with:
 
 ```sh
-openssl rand -hex 64   # for JWT_SECRET and JWT_REFRESH_SECRET
-openssl rand -hex 32   # for CRON_SECRET
+openssl rand -hex 64    # JWT_SECRET and JWT_REFRESH_SECRET
+openssl rand -base64 32 # ENCRYPTION_KEY (must decode to exactly 32 bytes)
+openssl rand -hex 32    # CRON_SECRET
 ```
 
 **`apps/web/.env.local`** — required variables:
@@ -141,17 +150,18 @@ openssl rand -hex 32   # for CRON_SECRET
 
 ### 3 — Set up the database
 
-Create the database, then run Prisma migrations:
-
 ```sh
-# Create the database (if it doesn't exist yet)
+# Create the database (drop first if you want a truly clean slate)
 createdb carevault
-
-# Run all migrations
-npm run db:migrate -w @repo/db
 
 # Generate the Prisma client
 npm run db:generate -w @repo/db
+
+# First-time setup: create the initial migration from the current schema
+npm run db:migrate:dev -w @repo/db -- --name init
+
+# Subsequent setups (CI / production / additional dev machines):
+npm run db:migrate -w @repo/db
 ```
 
 ### 4 — Seed the database (dev only)
@@ -195,20 +205,25 @@ Base path: `/api/v1`
 
 ### Auth endpoints (`/auth`)
 
-| Method | Path                    | Description                                   |
-| ------ | ----------------------- | --------------------------------------------- |
-| POST   | `/auth/login`           | Email + password → access token + refresh token |
-| POST   | `/auth/refresh`         | Rotate refresh token → new token pair         |
-| POST   | `/auth/logout`          | Revoke refresh token                          |
-| GET    | `/auth/me`              | Get current user profile                      |
-| POST   | `/auth/forgot-password` | Request a password-reset link                 |
-| POST   | `/auth/reset-password`  | Set new password using reset token            |
+| Method | Path                    | Description                                                                  |
+| ------ | ----------------------- | ---------------------------------------------------------------------------- |
+| POST   | `/auth/login`           | Email + password → access token in body, refresh token in `Set-Cookie`        |
+| POST   | `/auth/refresh`         | Reads refresh cookie, rotates it, returns a new access token                  |
+| POST   | `/auth/logout`          | Revokes the refresh row and clears the cookie                                 |
+| GET    | `/auth/me`              | Current user profile                                                          |
+| POST   | `/auth/forgot-password` | Always 200 with generic message (no email enumeration)                        |
+| POST   | `/auth/reset-password`  | Set new password using reset token                                            |
 
-### Tokens
+### Token model (OAuth 2.0 BCP for SPAs)
 
-- **Access token**: JWT, 8-hour TTL, signed with `JWT_SECRET`
-- **Refresh token**: UUID stored in `refresh_tokens` table, 30-day TTL, rotated on every use
-- **Storage**: access token stored in `localStorage` (key: `carevault-auth`)
+| Token   | Where it lives                                                              | TTL  | XSS reachable? |
+| ------- | --------------------------------------------------------------------------- | ---- | -------------- |
+| Access  | React state (memory only) — sent as `Authorization: Bearer`                 | 8 h  | Yes (bounded by TTL) |
+| Refresh | `Set-Cookie: carevault_refresh; HttpOnly; SameSite=Lax; Path=/api/v1/auth`  | 30 d | **No**         |
+
+Refresh tokens **rotate on every use**. If a previously-rotated (revoked) token
+is ever presented again, the user's entire refresh chain is invalidated — a
+theft signal forces re-login. JWT algorithm is pinned to HS256 on both sign and verify.
 
 ---
 
@@ -227,11 +242,17 @@ npm run db:studio -w @repo/db
 
 ---
 
-## Build & Typecheck
+## Build, Typecheck & Test
 
 ```sh
 # Typecheck all packages
 npm run typecheck
+
+# Run tests (vitest in apps/api: crypto, RBAC, facility scoping, auth flow)
+npm run test
+
+# Watch mode for the API tests
+npm run test:watch -w @repo/api
 
 # Build all packages
 npm run build
@@ -240,6 +261,10 @@ npm run build
 npm run build -w @repo/api
 npm run build -w carevault-web
 ```
+
+CI runs the full pipeline on every push and PR to `main`:
+`npm ci → db:generate → turbo typecheck → turbo test → turbo build`
+(see [.github/workflows/ci.yml](./.github/workflows/ci.yml)).
 
 ---
 

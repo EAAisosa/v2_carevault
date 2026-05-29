@@ -39,11 +39,8 @@ export default class ErrorBoundary extends Component<Props, State> {
           <p className="text-sm text-muted-foreground">
             An unexpected error occurred. If this persists, contact your system administrator.
           </p>
-          {this.state.error && (
-            <pre className="text-left text-xs bg-muted rounded-lg p-3 overflow-auto max-h-32 text-muted-foreground">
-              {this.state.error.message}
-            </pre>
-          )}
+          {/* Intentionally do not render error.message — it can contain PHI (patient IDs,
+              query strings) leaked from fetch error paths. */}
           <Button onClick={() => window.location.reload()} size="sm">
             Reload page
           </Button>

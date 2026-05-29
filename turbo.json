@@ -16,7 +16,8 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "cache": false
+      "outputs": [],
+      "inputs": ["src/**", "vitest.config.ts", "package.json"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]

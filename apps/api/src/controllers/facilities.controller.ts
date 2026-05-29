@@ -37,7 +37,12 @@ export async function updateFacility(req: Request, res: Response) {
 
 export async function updateFacilityStatus(req: Request, res: Response) {
   const { status } = statusSchema.parse(req.body);
-  const result = await facilitiesService.updateFacilityStatus(req.params["id"]!, status);
+  const result = await facilitiesService.updateFacilityStatus(
+    req.params["id"]!,
+    status,
+    req.user!.role,
+    req.user!.facilityId
+  );
 
   await auditLogsService.createAuditLog({
     userId: req.user!.id,

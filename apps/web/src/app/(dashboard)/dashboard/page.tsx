@@ -1,33 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Users, Activity, GitMerge, Database, RefreshCw } from "lucide-react";
 import StatsCard from "@/components/StatsCard";
 import StatusBadge from "@/components/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
-import { useApi } from "@/hooks/useApi";
-import type { DashboardStats, StagedRecord, SyncLog } from "@repo/types";
-
-type SyncLogWithFacility = SyncLog & { facilityName?: string };
+import { useDashboardStats } from "@/api/dashboard";
 
 export default function DashboardPage() {
   const { isAnyAdmin } = useAuth();
-  const api = useApi();
+  const query = useDashboardStats();
 
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentStaging, setRecentStaging] = useState<StagedRecord[]>([]);
-  const [recentSyncs, setRecentSyncs] = useState<SyncLogWithFacility[]>([]);
-
-  useEffect(() => {
-    api.get<{ stats: DashboardStats; recentStaging: StagedRecord[]; recentSyncs: SyncLogWithFacility[] }>(
-      "/dashboard/stats",
-    ).then((data) => {
-      setStats(data.stats);
-      setRecentStaging(data.recentStaging ?? []);
-      setRecentSyncs(data.recentSyncs ?? []);
-    }).catch(console.error);
-  }, []);
+  const stats = query.data?.stats;
+  const recentStaging = query.data?.recentStaging ?? [];
+  const recentSyncs = query.data?.recentSyncs ?? [];
 
   return (
     <div className="space-y-6">

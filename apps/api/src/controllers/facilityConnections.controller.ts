@@ -82,6 +82,6 @@ export async function deleteConnection(req: Request, res: Response) {
 
 export async function testConnection(req: Request, res: Response) {
   const { id } = req.params;
-  const result = await connectionsService.testConnection(id!);
+  const result = await connectionsService.testConnection(id!, req.user!.role, req.user!.facilityId);
   res.status(StatusCodes.OK).json(result);
 }

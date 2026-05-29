@@ -3,8 +3,8 @@
 // IMPORTANT: Access control is enforced at the application layer (apps/api services).
 // Never expose DATABASE_URL to any frontend or untrusted client.
 //
-// For credential decryption, use prisma.$queryRaw to call the
-// get_decrypted_ehr_credentials(uuid) Postgres SECURITY DEFINER function.
+// EHR credentials are encrypted at the application layer using AES-256-GCM
+// (see apps/api/src/lib/crypto.ts). The DB stores only the ciphertext.
 
 generator client {
   provider = "prisma-client-js"
@@ -273,11 +273,10 @@ model FacilityConnection {
   baseUrl                  String    @map("base_url")
   // "basic" | "oauth2" | "api_key"
   authType                 String    @default("basic") @map("auth_type")
-  // auth_credentials: column-level SELECT revoked from authenticated role.
-  // Only readable by service_role via get_decrypted_ehr_credentials() Postgres function.
-  // Use prisma.$queryRaw`SELECT get_decrypted_ehr_credentials(${id}::uuid)` to decrypt.
-  authCredentials          Json?     @default("{}") @map("auth_credentials")
-  authCredentialsEncrypted String?   @map("auth_credentials_encrypted")
+  // AES-256-GCM ciphertext of the JSON credentials blob. Encrypted/decrypted
+  // by apps/api/src/lib/crypto.ts using the ENCRYPTION_KEY env var (32 bytes,
+  // base64-encoded). Never stored or transmitted in plaintext.
+  authCredentials          String    @map("auth_credentials")
   fhirVersion              String    @default("R4") @map("fhir_version")
   // "pull" | "push" | "bidirectional"
   syncDirection            String    @default("pull") @map("sync_direction")
@@ -325,7 +324,8 @@ model SyncLog {
 
 model AuditLog {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  // userId references auth.users — not modelled in Prisma (GoTrue-owned)
+  // userId references profiles(id). No FK so the audit row survives if a profile
+  // is hard-deleted — NDPA requires retaining the action trail.
   userId       String   @map("user_id") @db.Uuid
   userName     String   @default("") @map("user_name")
   role         String   @default("clinician")

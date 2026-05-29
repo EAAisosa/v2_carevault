@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   UserPlus, Shield, Stethoscope, Ban, CheckCircle, Trash2, Loader2,
   Users, RefreshCw, MoreHorizontal, KeyRound, Mail, Building2,
@@ -13,88 +13,85 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { useApi } from "@/hooks/useApi";
+import {
+  useUsers, useInviteUser, useUpdateUserRole, useDeactivateUser,
+  useActivateUser, useDeleteUser, useResetUserPassword, useResendInvite,
+} from "@/api/users";
+import { useFacilities } from "@/api/facilities";
 import { toast } from "sonner";
-import type { UserProfile, Facility, AppRole } from "@repo/types";
-
-interface ManagedUser extends UserProfile {
-  banned: boolean;
-  confirmed: boolean;
-  lastSignIn: string | null;
-  createdAt: string;
-  facilityName: string | null;
-}
+import type { AppRole } from "@repo/types";
+import type { UseMutationResult } from "@tanstack/react-query";
 
 export default function UserManagementPage() {
-  const { userId, isCareVaultAdmin } = useAuth();
-  const api = useApi();
+  const { userId: currentUserId, isCareVaultAdmin } = useAuth();
+  const confirm = useConfirm();
 
-  const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviting, setInviting] = useState(false);
   const [facilityFilter, setFacilityFilter] = useState("all");
   const [inviteForm, setInviteForm] = useState({
     email: "", fullName: "", role: "clinician" as AppRole, facilityId: "",
   });
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api.get<ManagedUser[]>("/users");
-      setUsers(data);
-    } catch { toast.error("Failed to load users"); }
-    finally { setLoading(false); }
-  }, []);
+  const usersQuery = useUsers();
+  const facilitiesQuery = useFacilities({ enabled: isCareVaultAdmin });
 
-  useEffect(() => {
-    fetchUsers();
-    if (isCareVaultAdmin) {
-      api.get<Facility[]>("/facilities").then(setFacilities).catch(() => {});
-    }
-  }, []);
+  const users = usersQuery.data ?? [];
+  const facilities = facilitiesQuery.data ?? [];
+  const loading = usersQuery.isPending;
 
-  const handleInvite = async () => {
+  const inviteMutation = useInviteUser();
+  const updateRole = useUpdateUserRole();
+  const deactivate = useDeactivateUser();
+  const activate = useActivateUser();
+  const deleteUser = useDeleteUser();
+  const resetPwd = useResetUserPassword();
+  const resendInvite = useResendInvite();
+
+  const handleInvite = () => {
     const facilitylessRoles = ["carevault_admin", "researcher"];
     const needsFacility = !facilitylessRoles.includes(inviteForm.role);
     if (needsFacility && isCareVaultAdmin && !inviteForm.facilityId) {
       toast.error("Please select a facility for this user");
       return;
     }
-    setInviting(true);
-    try {
-      await api.post("/users/invite", {
+    inviteMutation.mutate(
+      {
         email: inviteForm.email,
         fullName: inviteForm.fullName,
         role: inviteForm.role,
-        facilityId: needsFacility ? (inviteForm.facilityId || undefined) : undefined,
-      });
-      toast.success(`Invite sent to ${inviteForm.email}`);
-      setInviteOpen(false);
-      setInviteForm({ email: "", fullName: "", role: "clinician", facilityId: "" });
-      fetchUsers();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Invite failed");
-    } finally {
-      setInviting(false);
-    }
+        ...(needsFacility && inviteForm.facilityId ? { facilityId: inviteForm.facilityId } : {}),
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Invite sent to ${inviteForm.email}`);
+          setInviteOpen(false);
+          setInviteForm({ email: "", fullName: "", role: "clinician", facilityId: "" });
+        },
+        onError: (err) => toast.error(err.message || "Invite failed"),
+      }
+    );
   };
 
-  const doAction = async (userId: string, fn: () => Promise<unknown>, successMsg: string) => {
-    setActionLoading(userId);
-    try {
-      await fn();
-      toast.success(successMsg);
-      fetchUsers();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Action failed");
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  const inviting = inviteMutation.isPending;
+
+  // Run an arbitrary mutation against a user id and feed toasts/loading state.
+  // Centralises the toast pattern so each menu item is a one-liner.
+  function runAction<TVars, TData>(
+    targetId: string,
+    mutation: UseMutationResult<TData, Error, TVars>,
+    vars: TVars,
+    successMsg: string
+  ) {
+    setActionLoading(targetId);
+    mutation.mutate(vars, {
+      onSuccess: () => toast.success(successMsg),
+      onError: (err) => toast.error(err.message || "Action failed"),
+      onSettled: () => setActionLoading(null),
+    });
+  }
 
   const filteredUsers = users.filter((u) => {
     if (!isCareVaultAdmin || facilityFilter === "all") return true;
@@ -110,7 +107,7 @@ export default function UserManagementPage() {
           <p className="text-sm text-muted-foreground">Manage clinicians and administrators</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => usersQuery.refetch()} disabled={loading}>
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
           </Button>
           <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
@@ -213,8 +210,8 @@ export default function UserManagementPage() {
                   <TableCell>
                     <Select
                       value={u.role}
-                      onValueChange={(v) => doAction(u.id, () => api.patch(`/users/${u.id}/role`, { role: v }), "Role updated")}
-                      disabled={u.id === userId || actionLoading === u.id}
+                      onValueChange={(v) => runAction(u.id, updateRole, { id: u.id, role: v as AppRole }, "Role updated")}
+                      disabled={u.id === currentUserId || actionLoading === u.id}
                     >
                       <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -238,7 +235,7 @@ export default function UserManagementPage() {
                     {u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString() : "Never"}
                   </TableCell>
                   <TableCell className="text-right">
-                    {u.id !== userId && (
+                    {u.id !== currentUserId && (
                       actionLoading === u.id ? (
                         <Loader2 size={14} className="animate-spin text-muted-foreground" />
                       ) : (
@@ -247,23 +244,33 @@ export default function UserManagementPage() {
                             <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal size={14} /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => doAction(u.id, () => api.post(`/users/${u.id}/reset-password`), "Password reset sent")}>
+                            <DropdownMenuItem onClick={() => runAction(u.id, resetPwd, u.id, "Password reset sent")}>
                               <KeyRound size={14} className="mr-2" /> Reset Password
                             </DropdownMenuItem>
                             {!u.confirmed && (
-                              <DropdownMenuItem onClick={() => doAction(u.id, () => api.post(`/users/${u.id}/resend-invite`), "Invite resent")}>
+                              <DropdownMenuItem onClick={() => runAction(u.id, resendInvite, u.id, "Invite resent")}>
                                 <Mail size={14} className="mr-2" /> Resend Invite
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => doAction(u.id, () => api.post(`/users/${u.id}/${u.banned ? "activate" : "deactivate"}`), u.banned ? "User activated" : "User deactivated")}>
+                            <DropdownMenuItem onClick={() => runAction(
+                              u.id,
+                              u.banned ? activate : deactivate,
+                              u.id,
+                              u.banned ? "User activated" : "User deactivated",
+                            )}>
                               {u.banned ? <><CheckCircle size={14} className="mr-2" /> Activate</> : <><Ban size={14} className="mr-2 text-destructive" /> Deactivate</>}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
-                              onClick={() => {
-                                if (!confirm(`Delete ${u.email}? This cannot be undone.`)) return;
-                                doAction(u.id, () => api.delete(`/users/${u.id}`), "User deleted");
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: `Delete ${u.email}?`,
+                                  description: "This cannot be undone.",
+                                  confirmLabel: "Delete",
+                                  destructive: true,
+                                });
+                                if (ok) runAction(u.id, deleteUser, u.id, "User deleted");
                               }}
                             >
                               <Trash2 size={14} className="mr-2" /> Delete User

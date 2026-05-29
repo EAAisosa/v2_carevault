@@ -1,13 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { config } from "../config";
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: config.isDev ? ["error", "warn"] : ["error"],
-    datasources: { db: { url: config.db.url } },
-  });
-
-if (!config.isProd) globalForPrisma.prisma = prisma;
+// Re-export the monorepo's shared Prisma singleton so all services route through
+// one connection pool. Keeping this thin barrel lets existing imports keep working
+// while @repo/db remains the single source of truth.
+export { prisma } from "@repo/db";
+export type { PrismaClient } from "@repo/db";

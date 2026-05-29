@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Building2, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,54 +8,43 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
+import { useFacilities, useCreateFacility, useUpdateFacilityStatus } from "@/api/facilities";
 import { toast } from "sonner";
-import type { Facility } from "@repo/types";
+import type { FacilityStatus } from "@repo/types";
 
 export default function FacilitiesPage() {
-  const api = useApi();
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ name: "", location: "", state: "", facilityCode: "", ehrSystem: "" });
-  const [saving, setSaving] = useState(false);
 
-  const fetchFacilities = () => {
-    api.get<Facility[]>("/facilities")
-      .then(setFacilities)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  const query = useFacilities();
+  const facilities = query.data ?? [];
+  const loading = query.isPending;
 
-  useEffect(() => { fetchFacilities(); }, []);
+  const createMutation = useCreateFacility();
+  const statusMutation = useUpdateFacilityStatus();
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!form.name || !form.location || !form.state) {
       toast.error("Name, location and state are required");
       return;
     }
-    setSaving(true);
-    try {
-      await api.post("/facilities", form);
-      toast.success("Facility created");
-      setAddOpen(false);
-      setForm({ name: "", location: "", state: "", facilityCode: "", ehrSystem: "" });
-      fetchFacilities();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create facility");
-    } finally {
-      setSaving(false);
-    }
+    createMutation.mutate(form, {
+      onSuccess: () => {
+        toast.success("Facility created");
+        setAddOpen(false);
+        setForm({ name: "", location: "", state: "", facilityCode: "", ehrSystem: "" });
+      },
+      onError: (err) => toast.error(err.message || "Failed to create facility"),
+    });
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
-    try {
-      await api.patch(`/facilities/${id}/status`, { status });
-      setFacilities((prev) => prev.map((f) => f.id === id ? { ...f, status: status as Facility["status"] } : f));
-    } catch {
-      toast.error("Failed to update facility status");
-    }
+  const handleStatusChange = (id: string, status: FacilityStatus) => {
+    statusMutation.mutate({ id, status }, {
+      onError: () => toast.error("Failed to update facility status"),
+    });
   };
+
+  const saving = createMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -108,7 +97,7 @@ export default function FacilitiesPage() {
               {f.facilityCode && <p className="text-xs font-mono text-muted-foreground">Code: {f.facilityCode}</p>}
               <div className="pt-1">
                 <Label className="text-xs text-muted-foreground mb-1 block">Change Status</Label>
-                <Select value={f.status} onValueChange={(v) => handleStatusChange(f.id, v)}>
+                <Select value={f.status} onValueChange={(v) => handleStatusChange(f.id, v as FacilityStatus)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="online">Online</SelectItem>

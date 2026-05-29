@@ -26,7 +26,7 @@ interface NavItem {
   label: string;
   path: string;
   icon: ReactNode;
-  access: "clinician_portal" | "any_admin" | "carevault_admin" | "researcher_portal" | "researcher_review_admin";
+  access: "clinician_portal" | "any_admin" | "carevault_admin" | "researcher_portal";
 }
 
 const navItems: NavItem[] = [
@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
   { label: "EHR Connections", path: "/connections", icon: <Plug size={18} />, access: "any_admin" },
   { label: "User Management", path: "/users", icon: <Users size={18} />, access: "any_admin" },
   { label: "Audit Logs", path: "/audit", icon: <Shield size={18} />, access: "carevault_admin" },
-  { label: "Research Requests", path: "/research-requests", icon: <Inbox size={18} />, access: "researcher_review_admin" },
+  { label: "Research Requests", path: "/research-requests", icon: <Inbox size={18} />, access: "carevault_admin" },
   { label: "Research Dashboard", path: "/research", icon: <FlaskConical size={18} />, access: "researcher_portal" },
   { label: "My Projects", path: "/research/projects", icon: <ClipboardList size={18} />, access: "researcher_portal" },
   { label: "Explore Data", path: "/research/explore", icon: <Database size={18} />, access: "researcher_portal" },
@@ -54,7 +54,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       case "clinician_portal": return !isResearcher;
       case "any_admin": return isAnyAdmin;
       case "carevault_admin": return isCareVaultAdmin;
-      case "researcher_review_admin": return isAnyAdmin;
       case "researcher_portal": return isResearcher;
       default: return false;
     }
@@ -62,7 +61,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const clinicianNav = visibleItems.filter((n) => n.access === "clinician_portal");
   const adminNav = visibleItems.filter(
-    (n) => n.access === "any_admin" || n.access === "carevault_admin" || n.access === "researcher_review_admin",
+    (n) => n.access === "any_admin" || n.access === "carevault_admin",
   );
   const researcherNav = visibleItems.filter((n) => n.access === "researcher_portal");
 

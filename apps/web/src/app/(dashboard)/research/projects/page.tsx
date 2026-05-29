@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ClipboardList, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,41 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
+import { useMyResearchProjects, useCreateResearchProject } from "@/api/research";
 import { toast } from "sonner";
-import type { ResearchProject } from "@repo/types";
 
 export default function MyProjectsPage() {
-  const api = useApi();
-  const [projects, setProjects] = useState<ResearchProject[]>([]);
-  const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", principalInvestigator: "", dataCategories: "" });
-  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    api.get<ResearchProject[]>("/research-projects/my")
-      .then(setProjects)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const query = useMyResearchProjects();
+  const projects = query.data ?? [];
+  const loading = query.isPending;
 
-  const handleCreate = async () => {
-    setSaving(true);
-    try {
-      const project = await api.post<ResearchProject>("/research-projects", {
+  const createMutation = useCreateResearchProject();
+  const saving = createMutation.isPending;
+
+  const handleCreate = () => {
+    createMutation.mutate(
+      {
         ...form,
         dataCategories: form.dataCategories.split(",").map((s) => s.trim()).filter(Boolean),
-      });
-      setProjects((prev) => [project, ...prev]);
-      setAddOpen(false);
-      setForm({ title: "", description: "", principalInvestigator: "", dataCategories: "" });
-      toast.success("Research project submitted for review");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit project");
-    } finally {
-      setSaving(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setAddOpen(false);
+          setForm({ title: "", description: "", principalInvestigator: "", dataCategories: "" });
+          toast.success("Research project submitted for review");
+        },
+        onError: (err) => toast.error(err.message || "Failed to submit project"),
+      }
+    );
   };
 
   return (

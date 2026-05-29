@@ -2,6 +2,7 @@ import "express-async-errors";
 import express, { type Application } from "express";
 import helmet from "helmet";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { pinoHttp } from "pino-http";
 import { config } from "./config";
 import { logger } from "./lib/logger";
@@ -39,11 +40,21 @@ export function createApp(): Application {
       customSuccessMessage(req, res) {
         return `${req.method} ${req.url} ${res.statusCode}`;
       },
-      redact: ["req.headers.authorization", "req.body.password", "req.body.credentials"],
+      redact: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "req.body.password",
+        "req.body.newPassword",
+        "req.body.credentials",
+        "req.body.token",
+        "req.body.refreshToken",
+        "req.body.authCredentials",
+      ],
     }),
   );
 
   app.use(correlationId);
+  app.use(cookieParser());
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
 

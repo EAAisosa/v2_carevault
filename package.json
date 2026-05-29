@@ -26,6 +26,6 @@
     "@repo/config": "*",
     "prettier": "^3.4.2",
     "turbo": "^2.5.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   }
 }

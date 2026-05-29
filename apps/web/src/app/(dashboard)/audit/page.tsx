@@ -1,42 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Shield, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
-import type { AuditLog } from "@repo/types";
+import { useAuditLogs } from "@/api/audit-logs";
 
-interface PaginatedAuditLogs {
-  records: AuditLog[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
+const PAGE_SIZE = 25;
 
 export default function AuditLogsPage() {
-  const api = useApi();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState("");
+  const [appliedFilter, setAppliedFilter] = useState("");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const PAGE_SIZE = 25;
 
-  const fetchLogs = (p: number = page, action: string = actionFilter) => {
-    setLoading(true);
-    const params = new URLSearchParams({ page: String(p), pageSize: String(PAGE_SIZE) });
-    if (action) params.set("action", action);
-    api.get<PaginatedAuditLogs>(`/audit-logs?${params}`)
-      .then((data) => { setLogs(data.records); setTotal(data.total); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  const query = useAuditLogs({ page, pageSize: PAGE_SIZE, action: appliedFilter });
 
-  useEffect(() => { fetchLogs(); }, []);
+  const logs = query.data?.records ?? [];
+  const total = query.data?.total ?? 0;
+  const loading = query.isPending;
 
-  const handleSearch = () => { setPage(1); fetchLogs(1); };
+  const handleSearch = () => { setPage(1); setAppliedFilter(actionFilter); };
 
   return (
     <div className="space-y-6">
@@ -54,7 +38,7 @@ export default function AuditLogsPage() {
           className="max-w-xs font-mono text-sm"
         />
         <Button variant="outline" size="sm" onClick={handleSearch}>Filter</Button>
-        {actionFilter && <Button variant="ghost" size="sm" onClick={() => { setActionFilter(""); setPage(1); fetchLogs(1, ""); }}>Clear</Button>}
+        {appliedFilter && <Button variant="ghost" size="sm" onClick={() => { setActionFilter(""); setAppliedFilter(""); setPage(1); }}>Clear</Button>}
       </div>
 
       {loading ? (
@@ -102,8 +86,8 @@ export default function AuditLogsPage() {
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{total} total logs · showing page {page}</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => { setPage(page - 1); fetchLogs(page - 1); }}>Previous</Button>
-              <Button variant="outline" size="sm" disabled={page * PAGE_SIZE >= total} onClick={() => { setPage(page + 1); fetchLogs(page + 1); }}>Next</Button>
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={page * PAGE_SIZE >= total} onClick={() => setPage(page + 1)}>Next</Button>
             </div>
           </div>
         </>

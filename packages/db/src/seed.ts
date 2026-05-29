@@ -9,10 +9,24 @@
  *   - 4 patients with clinical records for the first patient
  */
 
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+// Mirror of apps/api/src/lib/crypto.ts so the seed produces ciphertext the API
+// can decrypt. Tiny inline duplicate to avoid a packages/db → apps/api dep cycle.
+function encryptJSON(value: unknown): string {
+  const key = Buffer.from(process.env["ENCRYPTION_KEY"] ?? "", "base64");
+  if (key.length !== 32) {
+    throw new Error("ENCRYPTION_KEY must be base64 of 32 bytes (openssl rand -base64 32)");
+  }
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const ct = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), ct]).toString("base64");
+}
 
 async function main() {
   console.log("🌱 Seeding CareVault database...");
@@ -122,7 +136,7 @@ async function main() {
       ehrType: "OpenMRS",
       baseUrl: "https://demo.openmrs.org/openmrs/ws/fhir2/R4",
       authType: "basic",
-      authCredentials: { username: "admin", password: "Admin123" },
+      authCredentials: encryptJSON({ username: "admin", password: "Admin123" }),
       fhirVersion: "R4",
       syncDirection: "pull",
       syncIntervalMinutes: 180,
@@ -138,7 +152,7 @@ async function main() {
       ehrType: "Bahmni",
       baseUrl: "https://demo.bahmni.org/openmrs/ws/fhir2/R4",
       authType: "basic",
-      authCredentials: { username: "admin", password: "Admin123" },
+      authCredentials: encryptJSON({ username: "admin", password: "Admin123" }),
       fhirVersion: "R4",
       syncDirection: "pull",
       syncIntervalMinutes: 180,

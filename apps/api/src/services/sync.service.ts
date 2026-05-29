@@ -4,18 +4,8 @@ import { AppError } from "../middleware/errorHandler";
 import { StatusCodes } from "http-status-codes";
 import { mapFHIRBundle, pullFromEHR } from "@repo/fhir";
 import type { AppRole } from "@repo/types";
-
-interface DecryptedCredentials {
-  get_decrypted_ehr_credentials: string | null;
-}
-
-async function getDecryptedCredentials(connectionId: string): Promise<Record<string, unknown>> {
-  const rows = await prisma.$queryRaw<[DecryptedCredentials]>`
-    SELECT get_decrypted_ehr_credentials(${connectionId}::uuid)
-  `;
-  const raw = rows[0]?.get_decrypted_ehr_credentials;
-  return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-}
+import { config } from "../config";
+import { decryptJSON } from "../lib/crypto";
 
 export async function pullSync(connectionId: string) {
   const conn = await prisma.facilityConnection.findUnique({ where: { id: connectionId } });
@@ -32,7 +22,7 @@ export async function pullSync(connectionId: string) {
   });
 
   try {
-    const creds = await getDecryptedCredentials(conn.id);
+    const creds = decryptJSON<Record<string, unknown>>(conn.authCredentials);
     const bundle = await pullFromEHR(
       {
         baseUrl: conn.baseUrl,
@@ -157,6 +147,9 @@ export async function getSyncLogs(
 }
 
 export async function simulateSync(facilityId: string) {
+  if (config.isProd) {
+    throw new AppError("Simulated sync is disabled in production", StatusCodes.FORBIDDEN);
+  }
   const facility = await prisma.facility.findUnique({ where: { id: facilityId } });
   if (!facility) throw new AppError("Facility not found", StatusCodes.NOT_FOUND);
 

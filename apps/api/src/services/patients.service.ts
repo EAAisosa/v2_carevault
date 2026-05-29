@@ -70,8 +70,9 @@ export async function getPatientById(id: string, role: AppRole, facilityId: stri
 
   if (!patient) throw new AppError("Patient not found", StatusCodes.NOT_FOUND);
 
-  // Clinicians restricted to their facility
-  if (role === "clinician" && patient.facilityId !== facilityId) {
+  // Clinicians and facility admins restricted to their own facility's patients.
+  // carevault_admin is unrestricted; researchers were blocked at the route layer.
+  if ((role === "clinician" || role === "facility_admin") && patient.facilityId !== facilityId) {
     throw new AppError("Patient not found", StatusCodes.NOT_FOUND);
   }
 

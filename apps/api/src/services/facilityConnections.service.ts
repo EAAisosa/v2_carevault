@@ -1,32 +1,33 @@
 import { prisma } from "../lib/prisma";
-import { Prisma } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
 import { StatusCodes } from "http-status-codes";
 import type { AppRole } from "@repo/types";
 import { pullFromEHR } from "@repo/fhir";
+import { encryptJSON, decryptJSON } from "../lib/crypto";
+
+// Public projection — never includes the ciphertext column.
+const SAFE_SELECT = {
+  id: true,
+  facilityId: true,
+  ehrType: true,
+  baseUrl: true,
+  authType: true,
+  fhirVersion: true,
+  syncDirection: true,
+  syncIntervalMinutes: true,
+  isActive: true,
+  lastSuccessfulSync: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 export async function listConnections(role: AppRole, callerFacilityId: string | null) {
   const where = role === "facility_admin" && callerFacilityId
     ? { facilityId: callerFacilityId }
     : {};
-
-  // Never return auth_credentials or auth_credentials_encrypted to the API caller
   return prisma.facilityConnection.findMany({
     where,
-    select: {
-      id: true,
-      facilityId: true,
-      ehrType: true,
-      baseUrl: true,
-      authType: true,
-      fhirVersion: true,
-      syncDirection: true,
-      syncIntervalMinutes: true,
-      isActive: true,
-      lastSuccessfulSync: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: SAFE_SELECT,
     orderBy: { createdAt: "desc" },
   });
 }
@@ -49,24 +50,18 @@ export async function createConnection(
     throw new AppError("Cannot create connections for other facilities", StatusCodes.FORBIDDEN);
   }
 
-  // auth_credentials will be encrypted by the DB trigger (pgcrypto)
   return prisma.facilityConnection.create({
     data: {
       facilityId: data.facilityId,
       ehrType: data.ehrType,
       baseUrl: data.baseUrl,
       authType: data.authType,
-      authCredentials: data.authCredentials as Prisma.InputJsonValue,
+      authCredentials: encryptJSON(data.authCredentials),
       fhirVersion: data.fhirVersion ?? "R4",
       syncDirection: data.syncDirection ?? "pull",
       syncIntervalMinutes: data.syncIntervalMinutes ?? 60,
     },
-    select: {
-      id: true, facilityId: true, ehrType: true, baseUrl: true,
-      authType: true, fhirVersion: true, syncDirection: true,
-      syncIntervalMinutes: true, isActive: true, lastSuccessfulSync: true,
-      createdAt: true, updatedAt: true,
-    },
+    select: SAFE_SELECT,
   });
 }
 
@@ -93,17 +88,12 @@ export async function updateConnection(
     data: {
       ...(data.baseUrl !== undefined && { baseUrl: data.baseUrl }),
       ...(data.authCredentials !== undefined && {
-        authCredentials: data.authCredentials as Prisma.InputJsonValue,
+        authCredentials: encryptJSON(data.authCredentials),
       }),
       ...(data.syncIntervalMinutes !== undefined && { syncIntervalMinutes: data.syncIntervalMinutes }),
       ...(data.isActive !== undefined && { isActive: data.isActive }),
     },
-    select: {
-      id: true, facilityId: true, ehrType: true, baseUrl: true,
-      authType: true, fhirVersion: true, syncDirection: true,
-      syncIntervalMinutes: true, isActive: true, lastSuccessfulSync: true,
-      createdAt: true, updatedAt: true,
-    },
+    select: SAFE_SELECT,
   });
 }
 
@@ -122,18 +112,25 @@ export async function deleteConnection(
   await prisma.facilityConnection.delete({ where: { id } });
 }
 
-export async function testConnection(id: string) {
-  // Decrypt credentials via Postgres SECURITY DEFINER function
-  const rows = await prisma.$queryRaw<[{ get_decrypted_ehr_credentials: string }]>`
-    SELECT get_decrypted_ehr_credentials(${id}::uuid)
-  `;
-
+// Fetch a connection along with its decrypted credentials. Internal-only —
+// never expose the returned object directly to the API caller.
+export async function getConnectionWithCredentials(id: string) {
   const conn = await prisma.facilityConnection.findUnique({ where: { id } });
   if (!conn) throw new AppError("Connection not found", StatusCodes.NOT_FOUND);
+  const creds = decryptJSON<Record<string, unknown>>(conn.authCredentials);
+  return { conn, creds };
+}
 
-  const creds = rows[0]?.get_decrypted_ehr_credentials
-    ? JSON.parse(rows[0].get_decrypted_ehr_credentials)
-    : (conn.authCredentials as Record<string, unknown>);
+export async function testConnection(
+  id: string,
+  role: AppRole,
+  callerFacilityId: string | null
+) {
+  const { conn, creds } = await getConnectionWithCredentials(id);
+
+  if (role === "facility_admin" && conn.facilityId !== callerFacilityId) {
+    throw new AppError("Connection not found", StatusCodes.NOT_FOUND);
+  }
 
   try {
     await pullFromEHR(

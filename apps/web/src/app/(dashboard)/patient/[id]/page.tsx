@@ -1,30 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Shield, AlertTriangle, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatusBadge from "@/components/StatusBadge";
 import DataSourceBadge from "@/components/DataSourceBadge";
-import { useApi } from "@/hooks/useApi";
-import type { PatientRecord } from "@repo/types";
+import { usePatient } from "@/api/patients";
 
 export default function PatientSummaryPage() {
   const { id } = useParams<{ id: string }>();
-  const api = useApi();
-  const [data, setData] = useState<PatientRecord | null>(null);
-  const [loading, setLoading] = useState(true);
+  const query = usePatient(id);
 
-  useEffect(() => {
-    if (!id) return;
-    api.get<PatientRecord>(`/patients/${id}`)
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) {
+  if (query.isPending) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -32,7 +20,7 @@ export default function PatientSummaryPage() {
     );
   }
 
-  if (!data) {
+  if (!query.data) {
     return (
       <div className="text-center py-20">
         <p className="text-foreground font-medium">Patient not found</p>
@@ -41,7 +29,7 @@ export default function PatientSummaryPage() {
     );
   }
 
-  const { patient, encounters, vitalRecords: vitals, medications, allergies, labResults } = data;
+  const { patient, encounters, vitalRecords: vitals, medications, allergies, labResults } = query.data;
   const severeAllergies = allergies.filter((a) => a.severity === "severe");
 
   const emptyState = (label: string) => (
@@ -70,10 +58,10 @@ export default function PatientSummaryPage() {
           </div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="font-mono">NIN: {patient.nin}</span>
-            <span>{patient.gender === "Male" ? "♂ Male" : "♀ Female"}</span>
+            <span>{patient.gender}</span>
             <span>DOB: {patient.dateOfBirth}</span>
-            {patient.bloodGroup && <span>🩸 {patient.bloodGroup} / {patient.genotype}</span>}
-            {patient.phone && <span>📞 {patient.phone}</span>}
+            {patient.bloodGroup && <span>Blood: {patient.bloodGroup} / {patient.genotype}</span>}
+            {patient.phone && <span>Phone: {patient.phone}</span>}
           </div>
         </div>
       </div>

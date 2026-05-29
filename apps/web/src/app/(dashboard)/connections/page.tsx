@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Plug, Loader2, Plus, Trash2, TestTube, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,79 +8,88 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "@/components/StatusBadge";
-import { useApi } from "@/hooks/useApi";
+import {
+  useFacilityConnections,
+  useCreateFacilityConnection,
+  useDeleteFacilityConnection,
+  useTestFacilityConnection,
+  useTriggerSync,
+} from "@/api/facility-connections";
+import { useFacilities } from "@/api/facilities";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
-import type { FacilityConnection, Facility } from "@repo/types";
 
 export default function FacilityConnectionsPage() {
-  const api = useApi();
-  const [connections, setConnections] = useState<FacilityConnection[]>([]);
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
+
   const [addOpen, setAddOpen] = useState(false);
-  const [testing, setTesting] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState<string | null>(null);
   const [form, setForm] = useState({
     facilityId: "", ehrType: "", baseUrl: "", authType: "basic" as "basic" | "oauth2" | "api_key",
     username: "", password: "", apiKey: "", syncIntervalMinutes: 60,
   });
 
-  const fetchAll = () => {
-    Promise.all([
-      api.get<FacilityConnection[]>("/facility-connections"),
-      api.get<Facility[]>("/facilities"),
-    ]).then(([conns, facs]) => {
-      setConnections(conns);
-      setFacilities(facs);
-    }).catch(console.error).finally(() => setLoading(false));
-  };
+  const connectionsQuery = useFacilityConnections();
+  const facilitiesQuery = useFacilities();
+  const createMutation = useCreateFacilityConnection();
+  const deleteMutation = useDeleteFacilityConnection();
+  const testMutation = useTestFacilityConnection();
+  const syncMutation = useTriggerSync();
 
-  useEffect(() => { fetchAll(); }, []);
+  const connections = connectionsQuery.data ?? [];
+  const facilities = facilitiesQuery.data ?? [];
+  const loading = connectionsQuery.isPending || facilitiesQuery.isPending;
+  const testing = testMutation.isPending ? testMutation.variables : null;
+  const syncing = syncMutation.isPending ? syncMutation.variables : null;
 
-  const handleCreate = async () => {
-    const credentials: Record<string, string> =
+  const handleCreate = () => {
+    const authCredentials =
       form.authType === "basic" ? { username: form.username, password: form.password }
       : form.authType === "api_key" ? { apiKey: form.apiKey }
       : { clientId: form.username, clientSecret: form.password };
 
-    try {
-      await api.post("/facility-connections", {
-        facilityId: form.facilityId, ehrSystem: form.ehrType,
-        baseUrl: form.baseUrl, authType: form.authType,
-        credentials, syncIntervalMinutes: form.syncIntervalMinutes,
-      });
-      toast.success("Connection created");
-      setAddOpen(false);
-      fetchAll();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create connection");
-    }
+    createMutation.mutate(
+      {
+        facilityId: form.facilityId,
+        ehrType: form.ehrType,
+        baseUrl: form.baseUrl,
+        authType: form.authType,
+        authCredentials,
+        syncIntervalMinutes: form.syncIntervalMinutes,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Connection created");
+          setAddOpen(false);
+        },
+        onError: (err) => toast.error(err.message || "Failed to create connection"),
+      }
+    );
   };
 
-  const handleTest = async (id: string) => {
-    setTesting(id);
-    try {
-      await api.post(`/facility-connections/${id}/test`);
-      toast.success("Connection test successful");
-    } catch { toast.error("Connection test failed"); }
-    finally { setTesting(null); }
-  };
+  const handleTest = (id: string) =>
+    testMutation.mutate(id, {
+      onSuccess: () => toast.success("Connection test successful"),
+      onError: () => toast.error("Connection test failed"),
+    });
 
-  const handleSync = async (id: string) => {
-    setSyncing(id);
-    try {
-      await api.post("/sync/pull", { facilityConnectionId: id });
-      toast.success("Sync triggered");
-    } catch { toast.error("Sync failed"); }
-    finally { setSyncing(null); }
-  };
+  const handleSync = (id: string) =>
+    syncMutation.mutate(id, {
+      onSuccess: () => toast.success("Sync triggered"),
+      onError: () => toast.error("Sync failed"),
+    });
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this connection?")) return;
-    try {
-      await api.delete(`/facility-connections/${id}`);
-      setConnections((prev) => prev.filter((c) => c.id !== id));
-    } catch { toast.error("Failed to delete connection"); }
+    const ok = await confirm({
+      title: "Delete this connection?",
+      description: "The EHR sync for this facility will stop immediately.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast.success("Connection deleted"),
+      onError: () => toast.error("Failed to delete connection"),
+    });
   };
 
   const facilityName = (id: string) => facilities.find((f) => f.id === id)?.name ?? "—";

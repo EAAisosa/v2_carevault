@@ -1,156 +1,303 @@
-# CareVault — CLAUDE.md
+# CareVault — Agent Instructions
 
-This file guides Claude Code when working autonomously on the CareVault codebase.
+This file is **automatically loaded** by Claude Code (and, via `AGENTS.md`,
+by other AI coding tools). Read it before touching anything. It overrides any
+default agent behaviour.
 
-## What This Project Is
+If a rule below conflicts with what you'd normally do — follow the rule.
 
-CareVault is Nigeria's **NHRIRP** (National Health Records Integration & Repository Programme) platform — a national health record aggregation system. It pulls patient records from multiple hospital EHRs (OpenMRS, Bahmni, DHIS2) via FHIR R4, stages them for admin review, and surfaces unified patient histories to clinicians.
+---
 
-**This is health data. NDPA 2023 + GAID 2025 compliance is non-negotiable.**
+## What this project is
 
-## Tech Stack
+CareVault is Nigeria's **NHRIRP** (National Health Records Integration &
+Repository Programme) platform. It pulls patient records from hospital EHR
+systems (OpenMRS, Bahmni, DHIS2) over **FHIR R4**, stages them for admin
+review, and surfaces a unified longitudinal record to clinicians.
 
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
-- **Backend**: Self-hosted Supabase (PostgreSQL 16, GoTrue auth, PostgREST, Edge Functions in Deno)
-- **Infrastructure**: AWS af-south-1 (Cape Town) — all data stays in Africa
-- **EHR Integration**: FHIR R4 via `supabase/functions/ehr-connector`
+**This is PHI. NDPA 2023 + GAID 2025 compliance is non-negotiable.**
 
-## Repository Structure
+When in doubt about whether something is safe, default to **more** logging,
+**stricter** scoping, and **fewer** features — not the other way around.
 
+---
+
+## Read first, then write
+
+Before changing anything substantial, read these files. They are the canonical
+description of the system:
+
+| File | What it covers |
+|---|---|
+| [README.md](./README.md) | Quick start, tech stack, env vars, common commands |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System map, auth flow with diagram, layering rules, deployment plan |
+| [apps/web/src/api/README.md](./apps/web/src/api/README.md) | Frontend API hook pattern (one file per hook, per-domain folders) |
+| [packages/db/prisma/schema.prisma](./packages/db/prisma/schema.prisma) | Database schema — source of truth |
+
+If something is unclear from these files, ask the user. Do not guess.
+
+---
+
+## Documentation is mandatory
+
+**Every feature you ship must update the docs in the same change.** Not "later",
+not "in a follow-up PR" — same commit, same review.
+
+### What counts as a documentation update
+
+| You touched… | Update… |
+|---|---|
+| API surface (new endpoint, changed shape, new query param) | [README.md](./README.md) endpoint section + the relevant `apps/api/src/routes/<resource>.ts` file's top-of-file comment |
+| Auth flow, token model, session policy | [ARCHITECTURE.md](./ARCHITECTURE.md) → "Authentication & session management" |
+| New table, new column, new index | [README.md](./README.md) database section + a one-line comment in [packages/db/prisma/schema.prisma](./packages/db/prisma/schema.prisma) explaining *why* if it's not obvious |
+| New env var | Both `.env.example` files **and** [README.md](./README.md) env table |
+| New frontend hook in `apps/web/src/api/` | Re-export from the folder's `index.ts` and follow the pattern in [apps/web/src/api/README.md](./apps/web/src/api/README.md) |
+| New page or route | Add to `ROUTE_ACCESS` in [apps/web/src/app/(dashboard)/layout.tsx](./apps/web/src/app/(dashboard)/layout.tsx) **and** to the sidebar in [apps/web/src/components/AppLayout.tsx](./apps/web/src/components/AppLayout.tsx) |
+| New role, new permission boundary | [ARCHITECTURE.md](./ARCHITECTURE.md) → "Authorization" + corresponding service-layer test |
+| Encryption, secret handling, key rotation | [ARCHITECTURE.md](./ARCHITECTURE.md) → "EHR credentials at rest" |
+| Anything compliance-related (NDPA, audit, retention) | [README.md](./README.md) "Compliance" section + add an audit-log action if applicable |
+
+### What does *not* need documentation
+
+- Trivial refactors that don't change any external behaviour
+- Internal renames that don't cross module boundaries
+- Test-only changes
+- Dependency bumps that don't change API
+
+Default to writing the doc. If you skip it, you must say so explicitly in the
+PR description with a one-line reason.
+
+### Comments in code
+
+Default to **no** code comments. Only add a comment when the *why* is
+non-obvious — a hidden constraint, a subtle invariant, a workaround for a
+specific bug. Never explain *what* the code does (well-named identifiers do
+that). Never reference the current PR or ticket — that rots.
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Frontend | Next.js 14 App Router, TypeScript, Tailwind, shadcn/ui, **TanStack Query** |
+| Backend | Express 4 + Prisma 6 |
+| Database | PostgreSQL 16 (production: AWS RDS) |
+| Auth | JWT access in memory (8h) + refresh in **httpOnly cookie** (30d, rotating) |
+| At-rest crypto | **AES-256-GCM** for EHR credentials (app layer, not pgcrypto); **bcrypt(12)** for user passwords |
+| EHR | FHIR R4 via `@repo/fhir` |
+| Tests | Vitest |
+| Monorepo | Turborepo + npm workspaces, TypeScript 5.9 |
+
+There is **no Supabase**, no GoTrue, no PostgREST, no Edge Functions. Earlier
+versions of this codebase used Supabase; that's all been ripped out. Treat any
+reference you find to `supabase/`, `auth.users`, `service_role`, or
+`get_decrypted_ehr_credentials` as stale and remove it.
+
+---
+
+## Repository layout
+
+```text
+apps/
+  api/                       Express + Prisma backend (port 4000)
+  web/                       Next.js frontend (port 3000)
+packages/
+  config/                    Shared tsconfig base configs
+  db/                        Prisma schema + singleton client + seed
+  fhir/                      FHIR R4 client + bundle mappers
+  types/                     Cross-app TypeScript types
+.github/workflows/ci.yml     CI pipeline
+README.md, ARCHITECTURE.md   See above
 ```
-src/
-  pages/          # Route-level components
-  components/     # Shared UI components
-  contexts/       # AuthContext — roles: clinician | facility_admin | carevault_admin | researcher
-  integrations/
-    supabase/     # Generated Supabase client + types
-  data/
-    mockData.ts   # ⚠️ DEPRECATED — only type definitions remain useful
-supabase/
-  migrations/     # All DB schema changes go here as timestamped SQL files
-  functions/      # Deno edge functions
-infra/
-  aws-cape-town/  # Terraform + Docker Compose for production deployment
-```
 
-## Database Tables (Supabase / PostgreSQL)
+`apps/web/src/api/` is **the only place** the frontend talks to the backend.
+Pages do not call `createApiClient` directly — they import hooks from
+`@/api/<resource>`.
 
-### Core
-- `profiles` — user profile, linked to `facilities`
-- `user_roles` — role per user (app_role enum)
-- `facilities` — connected hospitals/EHR systems
-- `patients` — national patient registry (NIN as unique identifier)
+---
 
-### Clinical (added in `20260516000000_clinical_tables.sql`)
-- `encounters` — patient visits
-- `vital_records` — BP, HR, temp, weight, SpO2
-- `medications` — active/completed/discontinued prescriptions
-- `allergies` — substance, reaction, severity
-- `lab_results` — test results with reference ranges
-- `audit_logs` — all user/system actions (NDPA requirement)
+## Database
 
-### Workflow
-- `staged_records` — incoming FHIR data awaiting admin approval
-- `facility_connections` — EHR connector config per facility
-- `sync_logs` — FHIR sync history and errors
-- `research_projects` / `research_project_facilities` / `research_project_audit` — researcher data access
+- Prisma is the single source of truth for the schema.
+  [packages/db/prisma/schema.prisma](./packages/db/prisma/schema.prisma).
+- Schema changes go through Prisma migrations:
+  `npm run db:migrate:dev -w @repo/db -- --name <description>` in development.
+- One Prisma singleton lives in `@repo/db`. Re-exported via
+  `apps/api/src/lib/prisma.ts`. **Never** `new PrismaClient()` anywhere else.
+- Access control is enforced at the **application layer** (services), not the
+  database layer. There is no RLS. Earlier docs that mention RLS, `has_role()`,
+  or `is_any_admin()` Postgres helpers are stale — ignore them.
 
-## User Roles & Access
+---
 
-| Role | Access |
-|------|--------|
-| `clinician` | Read patients, encounters, vitals, meds, allergies, labs |
-| `facility_admin` | Manage users + connections for their facility only |
-| `carevault_admin` | Full access, staging queue, audit logs, all facilities |
-| `researcher` | De-identified data via approved research projects only |
+## User roles & access control
 
-All enforced at DB level via Row-Level Security. Never bypass RLS.
+Two-layer enforcement, both required:
 
-## Key Rules When Making Changes
+1. **Route layer** ([apps/api/src/middleware/requireRole.ts](./apps/api/src/middleware/requireRole.ts)):
+   "Can this role hit this URL at all?"
+2. **Service layer** (every service taking `role` + `callerFacilityId`):
+   "Tenant isolation — can this user from Facility A see Facility B's data?"
 
-### Database
-- All schema changes = new migration file in `supabase/migrations/`
-- Naming: `YYYYMMDDHHMMSS_description.sql`
-- Every new table must have RLS enabled and policies for all four roles
-- Never use `DROP TABLE` or `DROP COLUMN` in migrations — use soft deletes or nullable additions
-- Use `get_user_facility_id()`, `has_role()`, `is_any_admin()` helper functions in RLS policies
+| Role | URL access | Tenant scope |
+|---|---|---|
+| `clinician` | `/patients/*`, `/dashboard` | Own facility |
+| `facility_admin` | + `/users`, `/connections`, `/staging`, `/integrated` | Own facility |
+| `carevault_admin` | + `/facilities`, `/audit`, `/research-requests` | Unrestricted |
+| `researcher` | `/research/*` | De-identified only (route not yet built) |
 
-### Frontend
-- **Never import from `src/data/mockData.ts`** — that file is deprecated. All data comes from Supabase
-- Always show loading states with `<Loader2>` from lucide-react
-- Always show empty states with a helpful message when DB returns zero rows
-- Use `useAuth()` from `@/contexts/AuthContext` for role checks — never hardcode role strings in UI
-- Patient data is **read-only** for clinicians — enforce with `<Shield>` badge and no edit UI
+The **frontend** also gates routes via `ROUTE_ACCESS` in
+[apps/web/src/app/(dashboard)/layout.tsx](./apps/web/src/app/(dashboard)/layout.tsx).
+The page must not render — let alone fetch — until permission is confirmed.
 
-### Compliance
-- Every patient record view must create an `audit_logs` insert: action `RECORD_VIEW`, resource `Patient/{id}`
-- Every patient search must log: action `PATIENT_SEARCH`
-- Researcher access goes through `patients_deidentified` view — never raw `patients` table
-- Auth sessions expire after 8 hours (configured in GoTrue)
-- Passwords minimum 12 characters
+When you add a new endpoint or service that handles tenant-scoped data, you
+**must** add a service-layer scoping test in
+`apps/api/src/services/<name>.service.test.ts`. See
+[patients.service.test.ts](./apps/api/src/services/patients.service.test.ts)
+for the pattern.
 
-### FHIR Integration
-- The `ehr-connector` edge function accepts FHIR R4 bundles
-- All incoming records land in `staged_records` with `status = 'pending'`
-- NIN is extracted from `identifier[].system = "urn:ng:nin"`
-- Never auto-approve staged records — always require admin review
+---
 
-## Current Priorities
+## Authentication & sessions
 
-1. **Wire audit logging** — add `prisma.auditLog.create(...)` calls in PatientSearch and PatientSummary on every view/search event
-2. **Active FHIR sync scheduler** — build a scheduled endpoint in `apps/api` that polls `facility_connections` and triggers the sync service on `sync_interval_minutes` cadence
-3. **NIN ↔ MRN matching** — when a staged record's NIN doesn't match any `patients` row, implement fuzzy matching on name + DOB + phone before creating a new patient record
-4. **Infrastructure** — owner will wire their own DB + deployment when ready
+- Access token: HS256 JWT, 8h TTL, **in memory only** (React state). Never put
+  it in `localStorage`, `sessionStorage`, or any cookie.
+- Refresh token: opaque UUID stored in `refresh_tokens` table, 30d TTL,
+  rotated on every use, set by API as `Set-Cookie: carevault_refresh;
+  HttpOnly; SameSite=Lax; Path=/api/v1/auth`.
+- Reusing a revoked refresh token revokes the user's entire chain (theft
+  signal). See [auth.service.ts](./apps/api/src/services/auth.service.ts).
+- JWT algorithm is **pinned to HS256** on both sign and verify. Never allow
+  `none` or `RS256` confusion.
 
-## Running Locally
+---
+
+## Compliance (NDPA / GAID)
+
+- Every patient-data read writes an `audit_logs` row in a `try/finally` block
+  so attempted-but-failed access is logged too. See
+  [patients.controller.ts](./apps/api/src/controllers/patients.controller.ts).
+- Actions in use: `PATIENT_SEARCH`, `RECORD_VIEW`, `FACILITY_CONNECTION_*`,
+  `FACILITY_STATUS_CHANGE`. Add new ones to the same set when introducing new
+  flows; document them in this file's table above.
+- Researcher access must go through a de-identified path. Never expose raw
+  `patients` rows to a researcher.
+- Passwords: bcrypt rounds = 12. Minimum 12 characters.
+- EHR credentials at rest: AES-256-GCM via
+  [apps/api/src/lib/crypto.ts](./apps/api/src/lib/crypto.ts). Key in
+  `ENCRYPTION_KEY` env var, base64 of 32 bytes. Never log, never return,
+  never store plaintext.
+
+---
+
+## Frontend rules
+
+- **No raw `useEffect` + `setState` for data fetching.** Use a hook from
+  `apps/web/src/api/<resource>`. If the hook doesn't exist, add it
+  (see [apps/web/src/api/README.md](./apps/web/src/api/README.md)).
+- Loading / error / empty UI: use `<DataView>` from
+  [apps/web/src/components/DataView.tsx](./apps/web/src/components/DataView.tsx),
+  or follow its shape. Every data page must show all three states.
+- Destructive actions: use `useConfirm()` from
+  [apps/web/src/components/ConfirmDialog.tsx](./apps/web/src/components/ConfirmDialog.tsx).
+  Never `window.confirm()`.
+- Role checks: `useAuth()` from `@/contexts/AuthContext`. Never hardcode role
+  strings in JSX.
+- Patient data is read-only for clinicians. No edit affordances.
+- Never include PII (NIN, name, DOB, phone) in URLs — POST instead of GET.
+- Never `console.log` patient IDs or error messages that include them.
+
+---
+
+## Backend rules
+
+- Strict layering: `routes/` → `controllers/` → `services/` → `prisma`.
+  Controllers don't touch `prisma`. Services don't touch `req` / `res`.
+- All input validation via `zod` schemas in the controller.
+- All access-control checks happen in the service. Don't rely on the route
+  middleware alone — that only filters by role, not by facility.
+- Errors throw `AppError(message, statusCode)` from
+  [middleware/errorHandler.ts](./apps/api/src/middleware/errorHandler.ts).
+  The error handler emits a sanitised response and never leaks Prisma error
+  details in production.
+- Logger: pino. Use the request logger (`req.log`), not the global logger,
+  inside request handlers — it carries the correlation ID.
+- Redact list lives in [apps/api/src/app.ts](./apps/api/src/app.ts). Add new
+  sensitive fields there.
+
+---
+
+## FHIR integration
+
+- The connector lives in `apps/api/src/services/sync.service.ts` and uses
+  `@repo/fhir` for the wire protocol.
+- Incoming records land in `staged_records` with `status = 'pending'`.
+- NIN is extracted from `identifier[].system = "urn:ng:nin"`.
+- **Never auto-approve.** All approvals are admin-triggered.
+
+---
+
+## Tests
+
+- Run before you commit: `npm test` (or `npx turbo test`).
+- New service that handles PHI or access control → write a test. See
+  [auth.service.test.ts](./apps/api/src/services/auth.service.test.ts) for
+  mocking Prisma, and [patients.service.test.ts](./apps/api/src/services/patients.service.test.ts)
+  for facility-scoping tests.
+- Tests use Vitest. Don't introduce Jest.
+
+---
+
+## Local development
+
+See [README.md](./README.md) for the canonical setup. Quick reference:
 
 ```bash
 npm install
-
-# Copy and fill in env files
-cp apps/api/.env.example apps/api/.env
+cp apps/api/.env.example apps/api/.env       # fill in secrets, including ENCRYPTION_KEY
 cp apps/web/.env.example apps/web/.env.local
-cp packages/db/.env.example packages/db/.env
+cp packages/db/.env.example packages/db/.env # needs DATABASE_URL + ENCRYPTION_KEY
 
-# Set up the database
 createdb carevault
-npm run db:migrate -w @repo/db
 npm run db:generate -w @repo/db
-npm run db:seed -w @repo/db       # creates test users + sample data
+npm run db:migrate:dev -w @repo/db -- --name init   # first time only
+npm run db:seed -w @repo/db
 
-# Start both servers
-npm run dev
-# API → http://localhost:4000
-# Web → http://localhost:3000
+npm run dev   # API :4000, Web :3000
 ```
 
-Required env vars — `apps/api/.env`:
+Generate secrets:
 
-```env
-DATABASE_URL=postgresql://user:pass@localhost:5432/carevault
-JWT_SECRET=<openssl rand -hex 64>
-JWT_REFRESH_SECRET=<openssl rand -hex 64>
-ALLOWED_ORIGINS=http://localhost:3000
-APP_URL=http://localhost:3000
+```bash
+openssl rand -hex 64    # JWT_SECRET, JWT_REFRESH_SECRET
+openssl rand -base64 32 # ENCRYPTION_KEY
+openssl rand -hex 32    # CRON_SECRET
 ```
 
-Required env vars — `apps/web/.env.local`:
+---
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
-```
+## Git workflow
 
-## Deployment
+- Branch from `main` for features. Small, focused PRs.
+- Commit Prisma migrations separately from application code.
+- Never commit `.env` files. `.env.example` only.
+- Never commit secrets. If a real secret hits git, **rotate it** before
+  cleaning the history — the value in history is compromised regardless.
 
-Infrastructure is owner-managed. When ready:
+---
 
-- Database: PostgreSQL 16, run `npm run db:migrate -w @repo/db` against the production DB
-- API: build with `npm run build -w @repo/api`, run `node dist/index.js` (set `NODE_ENV=production`)
-- Web: build with `npm run build -w carevault-web`, deploy `.next/` output
+## When you finish a change
 
-## Git Workflow
+Before declaring done, check all of the following:
 
-- Branch from `main` for features
-- Commit migrations separately from code changes
-- Never commit secrets — use `.env.local` (gitignored) or AWS Secrets Manager
-- The GitHub PAT in the clone URL is sensitive — rotate it after use
+- [ ] `npm run typecheck` passes
+- [ ] `npm test` passes
+- [ ] Relevant docs updated (use the table in "Documentation is mandatory" above)
+- [ ] If you touched auth, access control, encryption, or audit logging — a
+      test was added or extended
+- [ ] No new `console.log` containing PII
+- [ ] No new `useEffect` + `setState` for data fetching in the web app
+- [ ] No new `window.confirm()` for destructive actions
+- [ ] No `new PrismaClient()` outside of `@repo/db`
+- [ ] No plaintext credentials returned in any API response
