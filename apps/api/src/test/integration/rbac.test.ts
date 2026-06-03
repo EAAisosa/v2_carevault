@@ -1,12 +1,47 @@
 /**
  * Role-based access control integration tests.
  * Verifies that routes reject the wrong roles at the HTTP layer,
- * without needing a real DB or seeded data.
+ * without needing a real DB or JWT signature verification.
+ *
+ * The authenticate middleware is mocked to decode the token without verifying
+ * the signature — these tests focus purely on requireRole behaviour.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import jwt from "jsonwebtoken";
+import type { Request, Response, NextFunction } from "express";
+import type { AppRole } from "@repo/types";
 import { createApp } from "../../app";
+
+// Bypass JWT signature verification and DB lookups.
+// Attaches user directly from the decoded (unverified) token claims.
+vi.mock("../../middleware/authenticate", () => ({
+  authenticate: (req: Request, res: Response, next: NextFunction) => {
+    const auth = req.headers["authorization"] as string | undefined;
+    if (!auth?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      const decoded = jwt.decode(auth.slice(7)) as {
+        sub: string;
+        role: string;
+        facilityId: string | null;
+      } | null;
+      if (!decoded) throw new Error("bad token");
+      (req as Request & { user: unknown }).user = {
+        id: decoded.sub,
+        email: "test@example.com",
+        role: decoded.role as AppRole,
+        facilityId: decoded.facilityId,
+        fullName: "Test User",
+      };
+      next();
+    } catch {
+      res.status(401).json({ error: "Unauthorized" });
+    }
+  },
+}));
 
 vi.mock("../../lib/prisma", () => ({
   prisma: {
@@ -22,63 +57,39 @@ vi.mock("../../lib/email", () => ({
   userInviteEmail: vi.fn(),
 }));
 
-import { prisma } from "../../lib/prisma";
-
 const app = createApp();
 
+// Tokens are decoded without signature verification in the mocked middleware.
+// Any secret works here — we just need a valid JWT structure.
 function makeToken(role: string, facilityId: string | null = null) {
-  return jwt.sign(
-    { sub: "user-1", role, facilityId },
-    process.env["JWT_SECRET"] ?? "test-secret",
-    { expiresIn: "1h" },
-  );
-}
-
-function mockAuthenticatedUser(role: string, facilityId: string | null = null) {
-  vi.mocked(prisma.profile.findUnique).mockResolvedValue({
-    id: "user-1",
-    email: "test@example.com",
-    fullName: "Test User",
-    facilityId,
-    isActive: true,
-    passwordHash: "",
-    lastSignIn: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as never);
-  vi.mocked(prisma.userRole.findFirst).mockResolvedValue({ role } as never);
+  return jwt.sign({ sub: "user-1", role, facilityId }, "test-secret", { expiresIn: "1h" });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env["JWT_SECRET"] = "test-secret";
-  process.env["JWT_REFRESH_SECRET"] = "test-refresh-secret";
-  process.env["ENCRYPTION_KEY"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-  process.env["CRON_SECRET"] = "test-cron-secret";
-  process.env["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test";
-  process.env["APP_URL"] = "http://localhost:3000";
 });
 
 describe("Route access control", () => {
-  describe("GET /api/v1/facilities — carevault_admin only", () => {
+  describe("GET /api/v1/facilities — requireAnyAdmin (facility_admin+)", () => {
     it("returns 401 with no token", async () => {
       const res = await request(app).get("/api/v1/facilities");
       expect(res.status).toBe(401);
     });
 
     it("returns 403 when clinician tries to access", async () => {
-      mockAuthenticatedUser("clinician", "fac-1");
       const res = await request(app)
         .get("/api/v1/facilities")
         .set("Authorization", `Bearer ${makeToken("clinician", "fac-1")}`);
       expect(res.status).toBe(403);
     });
+  });
 
-    it("returns 403 when facility_admin tries to access", async () => {
-      mockAuthenticatedUser("facility_admin", "fac-1");
+  describe("POST /api/v1/facilities — requireSuperAdmin (carevault_admin only)", () => {
+    it("returns 403 when facility_admin tries to create a facility", async () => {
       const res = await request(app)
-        .get("/api/v1/facilities")
-        .set("Authorization", `Bearer ${makeToken("facility_admin", "fac-1")}`);
+        .post("/api/v1/facilities")
+        .set("Authorization", `Bearer ${makeToken("facility_admin", "fac-1")}`)
+        .send({ name: "Test", location: "Lagos", state: "Lagos", ehrSystem: "OpenMRS" });
       expect(res.status).toBe(403);
     });
   });
@@ -90,7 +101,6 @@ describe("Route access control", () => {
     });
 
     it("returns 403 for clinician", async () => {
-      mockAuthenticatedUser("clinician", "fac-1");
       const res = await request(app)
         .get("/api/v1/audit-logs")
         .set("Authorization", `Bearer ${makeToken("clinician", "fac-1")}`);
@@ -100,7 +110,6 @@ describe("Route access control", () => {
 
   describe("POST /api/v1/sync/pull — facility_admin and above", () => {
     it("returns 403 for clinician", async () => {
-      mockAuthenticatedUser("clinician", "fac-1");
       const res = await request(app)
         .post("/api/v1/sync/pull")
         .set("Authorization", `Bearer ${makeToken("clinician", "fac-1")}`)

@@ -118,9 +118,9 @@ describe("POST /api/v1/auth/forgot-password", () => {
 });
 
 describe("POST /api/v1/auth/logout", () => {
-  it("returns 200 even without a refresh cookie (idempotent)", async () => {
+  it("returns 401 without a valid access token (logout requires auth)", async () => {
     const res = await request(app).post("/api/v1/auth/logout");
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 });
 

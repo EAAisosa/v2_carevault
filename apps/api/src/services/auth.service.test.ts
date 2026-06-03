@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("../lib/email", () => ({
+  passwordResetEmail: vi.fn().mockResolvedValue(undefined),
+  userInviteEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../lib/prisma", () => ({
   prisma: {
     refreshToken: {
