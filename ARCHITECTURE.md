@@ -227,19 +227,71 @@ Required env (see `.env.example` files for full lists):
 - `ALLOWED_ORIGINS` — CORS allowlist, comma-separated
 - `APP_URL` — used to build password-reset URLs
 
-## Deployment (planned: AWS af-south-1)
+## Deployment (AWS af-south-1)
+
+GAID 2025 requires all patient data to remain within Africa — `af-south-1` is the
+only compliant AWS region.
 
 | Component | Service |
 |---|---|
-| Database | AWS RDS for PostgreSQL 16 |
-| API | ECS Fargate or App Runner (Node 22) behind ALB |
-| Web | Vercel **or** AWS Amplify Hosting (Next.js adapter) |
-| Secrets | AWS Secrets Manager / SSM Parameter Store |
-| Logs | CloudWatch (pino emits JSON) |
-| Monitoring | CloudWatch metrics + alarms; consider Sentry for errors |
+| API | ECS Fargate (Node 22) behind ALB — `apps/api/Dockerfile` |
+| Database | AWS RDS for PostgreSQL 16 (private subnet, encrypted, 7-day backups) |
+| Web | Vercel (Next.js adapter, git-connected) |
+| Secrets | AWS Secrets Manager — all app secrets under `carevault/prod/` |
+| Container registry | Amazon ECR — `carevault-api` repository |
+| Logs | CloudWatch — `/ecs/carevault-api` (3-month retention, pino JSON) |
+| Monitoring | CloudWatch alarms: ECS CPU/memory, ALB 5xx, RDS connections/CPU |
+| WAF | WAF v2 WebACL attached to ALB (AWS managed rules + IP rate limiting) |
+| Scheduled sync | EventBridge rule (every 3 hours) → Lambda → `POST /sync/internal/auto-sync` |
+
+### Infrastructure as Code
+
+All AWS resources are defined in `infra/` (AWS CDK v2, TypeScript). Deploy order:
+
+```bash
+cd infra
+npm install
+cdk bootstrap aws://ACCOUNT_ID/af-south-1
+
+# 1. Provision in dependency order
+cdk deploy CareVaultNetwork
+cdk deploy CareVaultData
+cdk deploy CareVaultCompute --context certificateArn=arn:aws:acm:af-south-1:ACCOUNT:certificate/ID
+cdk deploy CareVaultMonitoring
+cdk deploy CareVaultScheduler
+
+# 2. Populate secrets (DATABASE_URL, ENCRYPTION_KEY) from RDS outputs
+bash infra/scripts/populate-secrets.sh
+
+# 3. Run migrations before first container deployment
+DATABASE_URL="$(aws secretsmanager get-secret-value --secret-id carevault/prod/database-url --query SecretString --output text)" \
+  npm run db:migrate -w @repo/db
+```
+
+### CI/CD pipeline
+
+- `ci.yml` — runs on every push and PR: typecheck → test → build.
+- `deploy.yml` — runs after CI passes on `main`: build Docker image → push ECR
+  → register new ECS task definition → deploy with rollback on failure.
+
+GitHub secrets required for deployment:
+
+| Secret | Value |
+|---|---|
+| `AWS_DEPLOY_ROLE_ARN` | ARN of an IAM role with ECR push + ECS deploy permissions (GitHub OIDC) |
+
+### First-time setup checklist
+
+- [ ] Request ACM certificate for `api.carevaultng.com` (DNS validation via registrar)
+- [ ] Run `cdk deploy` in order above with `certificateArn` context
+- [ ] Run `infra/scripts/populate-secrets.sh` to set DATABASE_URL and ENCRYPTION_KEY
+- [ ] Subscribe an email or PagerDuty endpoint to the `carevault-alerts` SNS topic
+- [ ] Set DNS: CNAME `api.carevaultng.com` → ALB DNS from `CareVaultCompute` outputs
+- [ ] Set GitHub secret `AWS_DEPLOY_ROLE_ARN`
+- [ ] Verify NEXT_PUBLIC_API_URL on Vercel points to `https://api.carevaultng.com/api/v1`
 
 DB migrations run as a one-off task (`npm run db:migrate -w @repo/db`) before
-deploying API. **Do not** run `prisma migrate dev` against production.
+deploying the API container. **Never** run `prisma migrate dev` against production.
 
 ## Testing strategy
 

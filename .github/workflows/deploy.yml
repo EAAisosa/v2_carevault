@@ -1,0 +1,89 @@
+name: Deploy
+
+# Runs only on pushes to main, and only after the CI workflow passes.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  id-token: write  # Required for OIDC token exchange
+  contents: read
+
+env:
+  AWS_REGION: af-south-1
+  ECR_REPO: carevault-api
+  ECS_CLUSTER: carevault
+  ECS_SERVICE: carevault-api
+  TASK_FAMILY: carevault-api
+  CONTAINER_NAME: api
+
+jobs:
+  deploy:
+    name: Build → Push ECR → Deploy ECS
+    runs-on: ubuntu-latest
+    # Only run when CI succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --file apps/api/Dockerfile \
+            --tag "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" \
+            --tag "$ECR_REGISTRY/$ECR_REPO:latest" \
+            .
+          docker push "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPO:latest"
+          echo "image=$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch current ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$TASK_FAMILY" \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Update task definition image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10

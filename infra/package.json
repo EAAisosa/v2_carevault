@@ -1,0 +1,27 @@
+{
+  "name": "carevault-infra",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "diff": "cdk diff --all",
+    "deploy": "cdk deploy --all --require-approval never",
+    "deploy:network": "cdk deploy CareVaultNetwork",
+    "deploy:data": "cdk deploy CareVaultData",
+    "deploy:compute": "cdk deploy CareVaultCompute",
+    "deploy:monitoring": "cdk deploy CareVaultMonitoring",
+    "deploy:scheduler": "cdk deploy CareVaultScheduler"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.160.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "^2.160.0",
+    "esbuild": "^0.24.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
