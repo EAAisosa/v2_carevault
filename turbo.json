@@ -21,7 +21,7 @@
       "inputs": ["src/**", "vitest.config.ts", "package.json"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^build"]
     },
     "db:generate": {
       "cache": false
