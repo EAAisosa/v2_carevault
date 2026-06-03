@@ -53,6 +53,7 @@ COPY --from=builder /app/packages/types/package.json ./packages/types/package.js
 # Compiled API
 COPY --from=builder /app/apps/api/dist          ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json  ./apps/api/package.json
+COPY --from=builder /app/apps/api/scripts       ./apps/api/scripts
 
 # Prisma schema needed at runtime for migrate deploy
 COPY --from=builder /app/packages/db/prisma     ./packages/db/prisma
