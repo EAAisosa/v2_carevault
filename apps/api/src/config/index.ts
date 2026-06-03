@@ -32,6 +32,11 @@ export const config = {
 
   appUrl: process.env["APP_URL"] ?? "http://localhost:3000",
 
+  ses: {
+    region: process.env["SES_REGION"] ?? "af-south-1",
+    fromAddress: process.env["SES_FROM_ADDRESS"] ?? "noreply@carevaultng.com",
+  },
+
   isProd: process.env["NODE_ENV"] === "production",
   isDev: process.env["NODE_ENV"] === "development",
 } as const;

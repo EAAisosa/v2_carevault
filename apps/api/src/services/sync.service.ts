@@ -2,7 +2,7 @@ import { prisma } from "../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
 import { StatusCodes } from "http-status-codes";
-import { mapFHIRBundle, pullFromEHR } from "@repo/fhir";
+import { mapFHIRBundle, pullFromEHR, pushToEHR } from "@repo/fhir";
 import type { AppRole } from "@repo/types";
 import { config } from "../config";
 import { decryptJSON } from "../lib/crypto";
@@ -90,6 +90,65 @@ export async function pullSync(connectionId: string) {
       },
     });
     throw new AppError(`Sync failed: ${message}`, StatusCodes.BAD_GATEWAY);
+  }
+}
+
+export async function pushSync(connectionId: string) {
+  const conn = await prisma.facilityConnection.findUnique({ where: { id: connectionId } });
+  if (!conn) throw new AppError("Connection not found", StatusCodes.NOT_FOUND);
+  if (!conn.isActive) throw new AppError("Connection is not active", StatusCodes.BAD_REQUEST);
+  if (conn.syncDirection === "pull") {
+    throw new AppError("This connection is pull-only", StatusCodes.BAD_REQUEST);
+  }
+
+  const syncLog = await prisma.syncLog.create({
+    data: {
+      facilityConnectionId: conn.id,
+      facilityId: conn.facilityId,
+      direction: "outbound",
+      status: "in_progress",
+    },
+  });
+
+  try {
+    const approved = await prisma.stagedRecord.findMany({
+      where: { sourceFacilityId: conn.facilityId, status: "approved", fhirPayload: { not: Prisma.JsonNull } },
+      take: 100,
+    });
+
+    if (approved.length === 0) {
+      await prisma.syncLog.update({
+        where: { id: syncLog.id },
+        data: { status: "completed", recordsProcessed: 0, completedAt: new Date() },
+      });
+      return { ok: true, recordsPushed: 0, syncLogId: syncLog.id };
+    }
+
+    const creds = decryptJSON<Record<string, unknown>>(conn.authCredentials);
+    const ehrConfig = {
+      baseUrl: conn.baseUrl,
+      authType: conn.authType as "basic" | "oauth2" | "api_key",
+      authCredentials: creds,
+      fhirVersion: conn.fhirVersion,
+    };
+    for (const record of approved) {
+      const resourceType = (record.fhirPayload as Record<string, unknown>)["resourceType"] as string ?? "Bundle";
+      await pushToEHR(ehrConfig, resourceType, record.fhirPayload);
+    }
+
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: { status: "completed", recordsProcessed: approved.length, completedAt: new Date() },
+    });
+
+    return { ok: true, recordsPushed: approved.length, syncLogId: syncLog.id };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: { status: "failed", errorMessage: message, nextRetryAt: new Date(Date.now() + 5 * 60_000) },
+    });
+    throw new AppError(`Push sync failed: ${message}`, StatusCodes.BAD_GATEWAY);
   }
 }
 

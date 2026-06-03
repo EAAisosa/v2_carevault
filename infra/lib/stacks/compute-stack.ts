@@ -5,6 +5,7 @@ import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as wafv2 from "aws-cdk-lib/aws-wafv2";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as rds from "aws-cdk-lib/aws-rds";
 import { Construct } from "constructs";
@@ -110,6 +111,14 @@ export class ComputeStack extends cdk.Stack {
     encryptionKey.grantRead(taskDef.taskRole);
     cronSecret.grantRead(taskDef.taskRole);
 
+    // SES — send password reset and invite emails
+    taskDef.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        resources: ["*"],
+      }),
+    );
+
     const container = taskDef.addContainer("api", {
       image: ecs.ContainerImage.fromEcrRepository(this.ecrRepository, "latest"),
       essential: true,
@@ -122,6 +131,8 @@ export class ComputeStack extends cdk.Stack {
         PORT: "4000",
         ALLOWED_ORIGINS: "https://carevaultng.com,https://www.carevaultng.com",
         APP_URL: "https://carevaultng.com",
+        SES_REGION: this.region,
+        SES_FROM_ADDRESS: "noreply@carevaultng.com",
       },
       secrets: {
         DATABASE_URL: ecs.Secret.fromSecretsManager(dbUrlSecret),

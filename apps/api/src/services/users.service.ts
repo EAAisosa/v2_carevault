@@ -5,6 +5,7 @@ import { AppError } from "../middleware/errorHandler";
 import { StatusCodes } from "http-status-codes";
 import { config } from "../config";
 import type { AppRole } from "@repo/types";
+import { userInviteEmail, passwordResetEmail } from "../lib/email";
 
 function assertFacilityScope(
   role: AppRole,
@@ -84,11 +85,10 @@ export async function inviteUser(
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   await prisma.passwordResetToken.create({ data: { userId: profile.id, token, expiresAt } });
 
-  return {
-    id: profile.id,
-    email: profile.email,
-    inviteUrl: `${config.appUrl}/reset-password?token=${token}`,
-  };
+  const inviteUrl = `${config.appUrl}/reset-password?token=${token}`;
+  await userInviteEmail({ to: email, fullName, inviteUrl, invitedBy: "CareVault Admin" });
+
+  return { id: profile.id, email: profile.email };
 }
 
 export async function updateUserRole(
@@ -166,10 +166,10 @@ export async function resetUserPassword(
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
   await prisma.passwordResetToken.create({ data: { userId, token, expiresAt } });
 
-  return {
-    message: `Password reset link generated for ${profile.email}`,
-    resetUrl: `${config.appUrl}/reset-password?token=${token}`,
-  };
+  const resetUrl = `${config.appUrl}/reset-password?token=${token}`;
+  await passwordResetEmail({ to: profile.email, resetUrl, appUrl: config.appUrl });
+
+  return { message: `Password reset email sent to ${profile.email}` };
 }
 
 export async function resendInvite(

@@ -11,6 +11,7 @@ const router: Router = Router();
 
 router.use("/logs", authenticate, requireAnyAdmin, syncController.getSyncLogs);
 router.post("/pull", authenticate, requireAnyAdmin, syncController.pullSync);
+router.post("/push", authenticate, requireAnyAdmin, syncController.pushSync);
 router.post("/simulate", authenticate, requireAnyAdmin, syncController.simulateSync);
 
 // Internal cron endpoint — authenticated by shared secret, not by JWT

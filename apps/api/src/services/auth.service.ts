@@ -6,6 +6,7 @@ import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorHandler";
 import { StatusCodes } from "http-status-codes";
 import type { AppRole } from "@repo/types";
+import { passwordResetEmail } from "../lib/email";
 
 export interface LoginResult {
   accessToken: string;
@@ -136,8 +137,8 @@ export async function forgotPassword(email: string): Promise<void> {
     prisma.passwordResetToken.create({ data: { userId: profile.id, token, expiresAt } }),
   ]);
 
-  // TODO: wire email provider — reset URL is:
-  // `${config.appUrl}/reset-password?token=${token}`
+  const resetUrl = `${config.appUrl}/reset-password?token=${token}`;
+  await passwordResetEmail({ to: profile.email, resetUrl, appUrl: config.appUrl });
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {

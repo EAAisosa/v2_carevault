@@ -8,6 +8,10 @@ const pullSchema = z.object({
   facilityConnectionId: z.string().uuid(),
 });
 
+const pushSchema = z.object({
+  facilityConnectionId: z.string().uuid(),
+});
+
 const simulateSchema = z.object({
   facilityId: z.string().uuid(),
 });
@@ -27,6 +31,23 @@ export async function pullSync(req: Request, res: Response) {
     role: req.user!.role,
     action: "SYNC_TRIGGERED",
     resource: `FacilityConnection/${facilityConnectionId}`,
+    facilityId: req.user!.facilityId,
+    ipAddress: req.ip,
+  });
+
+  res.status(StatusCodes.OK).json(result);
+}
+
+export async function pushSync(req: Request, res: Response) {
+  const { facilityConnectionId } = pushSchema.parse(req.body);
+  const result = await syncService.pushSync(facilityConnectionId);
+
+  await auditLogsService.createAuditLog({
+    userId: req.user!.id,
+    userName: req.user!.fullName,
+    role: req.user!.role,
+    action: "SYNC_TRIGGERED",
+    resource: `FacilityConnection/${facilityConnectionId}/push`,
     facilityId: req.user!.facilityId,
     ipAddress: req.ip,
   });

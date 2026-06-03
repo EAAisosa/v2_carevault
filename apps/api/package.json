@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.0.0",
     "@prisma/client": "^6.6.0",
     "@repo/db": "*",
     "@repo/fhir": "*",
