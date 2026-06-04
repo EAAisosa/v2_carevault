@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "npx prisma generate && tsc",
+    "build": "tsc",
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate deploy",
     "db:migrate:dev": "npx prisma migrate dev",
