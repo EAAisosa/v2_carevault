@@ -1,7 +1,7 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { Resend } from "resend";
 import { config } from "../config";
 
-const ses = new SESClient({ region: config.ses.region });
+const resend = new Resend(config.resendApiKey);
 
 interface EmailOptions {
   to: string;
@@ -11,25 +11,19 @@ interface EmailOptions {
 }
 
 export async function sendEmail(opts: EmailOptions): Promise<void> {
-  if (config.isDev) {
-    // In development, log the email instead of sending it to avoid SES sandbox limits.
+  if (!config.resendApiKey || config.isDev) {
+    // In development or when no API key is set, log instead of sending.
     console.log(`[email] To: ${opts.to} | Subject: ${opts.subject}\n${opts.text}`);
     return;
   }
 
-  await ses.send(
-    new SendEmailCommand({
-      Source: config.ses.fromAddress,
-      Destination: { ToAddresses: [opts.to] },
-      Message: {
-        Subject: { Data: opts.subject, Charset: "UTF-8" },
-        Body: {
-          Html: { Data: opts.html, Charset: "UTF-8" },
-          Text: { Data: opts.text, Charset: "UTF-8" },
-        },
-      },
-    }),
-  );
+  await resend.emails.send({
+    from: config.emailFrom,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+  });
 }
 
 export function passwordResetEmail(opts: { to: string; resetUrl: string; appUrl: string }) {
@@ -51,7 +45,7 @@ export function userInviteEmail(opts: { to: string; fullName: string; inviteUrl:
   return sendEmail({
     to: opts.to,
     subject: "You have been invited to CareVault",
-    text: `Hi ${opts.fullName},\n\n${opts.invitedBy} has invited you to CareVault.\n\nSet your password and activate your account:\n${opts.inviteUrl}\n\nThis link expires in 7 days.`,
+    text: `Hi ${opts.fullName},\n\n${opts.invitedBy} has invited you to CareVault.\n\nSet your password:\n${opts.inviteUrl}\n\nThis link expires in 7 days.`,
     html: `
       <p>Hi <strong>${opts.fullName}</strong>,</p>
       <p>${opts.invitedBy} has invited you to the CareVault NHRIRP platform.</p>

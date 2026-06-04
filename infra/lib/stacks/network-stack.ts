@@ -11,11 +11,18 @@ export class NetworkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // natGateways defaults to 1. Pass --context natGateways=0 to remove it
+    // (saves ~$43/month when ECS is scaled to 0 and nothing needs egress).
+    const natGateways = parseInt(
+      (this.node.tryGetContext("natGateways") as string | undefined) ?? "1",
+      10,
+    );
+
     // af-south-1 (Cape Town) has exactly 2 AZs.
     this.vpc = new ec2.Vpc(this, "VPC", {
       ipAddresses: ec2.IpAddresses.cidr("10.0.0.0/16"),
       maxAzs: 2,
-      natGateways: 1, // Single NAT keeps egress costs low; increase to 2 for HA.
+      natGateways,
       subnetConfiguration: [
         {
           name: "Public",

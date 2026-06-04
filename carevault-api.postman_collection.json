@@ -1,0 +1,562 @@
+{
+  "info": {
+    "name": "CareVault API",
+    "description": "CareVault NHRIRP Platform — all endpoints.\n\n**Setup:**\n1. Set the `baseUrl` collection variable to your ALB DNS or `https://api.carevaultng.com`\n2. Run the Login request — the token is auto-stored\n3. All authenticated requests use `{{token}}` automatically\n\n**Test accounts (password: CareVault2026!)**\n- admin@carevaultng.com — carevault_admin\n- fadmin@luth.ng — facility_admin\n- clinician@luth.ng — clinician\n- researcher@carevaultng.com — researcher",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://CareVa-ALBAE-DOi74y0OLjbV-1840763056.af-south-1.elb.amazonaws.com",
+      "description": "Change to https://api.carevaultng.com once DNS propagates"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "Auto-set by the Login request"
+    },
+    {
+      "key": "facilityId",
+      "value": "",
+      "description": "Auto-set by Login (from user.facilityId)"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "description": "Returns {status, db} — no auth required. ALB health check target."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.accessToken);",
+                  "  if (body.user && body.user.facilityId) {",
+                  "    pm.collectionVariables.set('facilityId', body.user.facilityId);",
+                  "  }",
+                  "  console.log('Token stored. Role:', body.user.role);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@carevaultng.com\",\n  \"password\": \"CareVault2026!\"\n}"
+            },
+            "description": "Returns accessToken (in body) + sets carevault_refresh cookie.\nThe Tests script auto-stores the token in {{token}}."
+          }
+        },
+        {
+          "name": "Login — facility_admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.accessToken);",
+                  "  pm.collectionVariables.set('facilityId', body.user.facilityId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"fadmin@luth.ng\",\n  \"password\": \"CareVault2026!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login — clinician",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.accessToken);",
+                  "  pm.collectionVariables.set('facilityId', body.user.facilityId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"clinician@luth.ng\",\n  \"password\": \"CareVault2026!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get current user",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "Reads the carevault_refresh httpOnly cookie. Works in browsers automatically; in Postman enable 'Send cookies'."
+          }
+        },
+        {
+          "name": "Forgot password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"clinician@luth.ng\"\n}"
+            },
+            "description": "Always returns 200 — never reveals whether the email exists."
+          }
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PASTE_RESET_TOKEN_HERE\",\n  \"newPassword\": \"NewPassword123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/logout",
+            "description": "Revokes the refresh token. Requires a valid access token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/dashboard/stats",
+            "description": "Returns counts for patients, facilities, pending staged records, users, sync logs. Facility-scoped for facility_admin."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Search patients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients?page=1&pageSize=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "q", "value": "", "description": "Search by name", "disabled": true },
+                { "key": "nin", "value": "", "description": "Search by NIN", "disabled": true }
+              ]
+            },
+            "description": "clinician+ | Facility-scoped. Use q= for name search, nin= for NIN lookup."
+          }
+        },
+        {
+          "name": "Get patient record",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/patients/PATIENT_ID_HERE",
+            "description": "clinician+ | Returns full longitudinal record: encounters, vitals, medications, allergies, lab results. Writes audit log."
+          }
+        },
+        {
+          "name": "Create patient",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/patients",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nin\": \"NG-TEST-001\",\n  \"firstName\": \"Emeka\",\n  \"lastName\": \"Okafor\",\n  \"dateOfBirth\": \"1990-03-15\",\n  \"gender\": \"Male\",\n  \"phone\": \"+2348012345678\",\n  \"bloodGroup\": \"O+\",\n  \"state\": \"Lagos\",\n  \"lga\": \"Lagos Island\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Staged Records",
+      "item": [
+        {
+          "name": "List staged records",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/staged-records?page=1&pageSize=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "status", "value": "pending", "disabled": true },
+                { "key": "facilityId", "value": "{{facilityId}}", "disabled": true }
+              ]
+            },
+            "description": "facility_admin+ | Filter by status: pending | approved | rejected | needs-review"
+          }
+        },
+        {
+          "name": "Approve record",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/staged-records/STAGED_RECORD_ID/approve",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Reject record",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/staged-records/STAGED_RECORD_ID/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminNotes\": \"Duplicate record — patient already exists\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Flag record",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/staged-records/STAGED_RECORD_ID/flag",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Mark needs review",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/staged-records/STAGED_RECORD_ID/needs-review",
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Facilities",
+      "item": [
+        {
+          "name": "List facilities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/facilities",
+            "description": "facility_admin+"
+          }
+        },
+        {
+          "name": "Create facility",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/facilities",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Eko Hospital\",\n  \"location\": \"Victoria Island\",\n  \"state\": \"Lagos\",\n  \"facilityCode\": \"EKO-001\",\n  \"ehrSystem\": \"Bahmni\"\n}"
+            },
+            "description": "carevault_admin only"
+          }
+        },
+        {
+          "name": "Update facility status",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/facilities/FACILITY_ID/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"online\"\n}"
+            },
+            "description": "facility_admin+ | status: online | degraded | offline"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Facility Connections",
+      "item": [
+        {
+          "name": "List connections",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/facility-connections",
+            "description": "facility_admin+ | Facility-scoped"
+          }
+        },
+        {
+          "name": "Create connection",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/facility-connections",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityId\": \"{{facilityId}}\",\n  \"ehrType\": \"OpenMRS\",\n  \"baseUrl\": \"https://openmrs.luth.ng/openmrs\",\n  \"authType\": \"basic\",\n  \"authCredentials\": {\n    \"username\": \"admin\",\n    \"password\": \"Admin123\"\n  },\n  \"fhirVersion\": \"R4\",\n  \"syncDirection\": \"pull\",\n  \"syncIntervalMinutes\": 180\n}"
+            },
+            "description": "facility_admin+ | Credentials are AES-256-GCM encrypted at rest"
+          }
+        },
+        {
+          "name": "Test connection",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/facility-connections/CONNECTION_ID/test",
+            "description": "facility_admin+ | Pings the EHR endpoint"
+          }
+        },
+        {
+          "name": "Delete connection",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/facility-connections/CONNECTION_ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users",
+            "description": "facility_admin+ | Facility-scoped for facility_admin"
+          }
+        },
+        {
+          "name": "Invite user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/users/invite",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@luth.ng\",\n  \"fullName\": \"New User\",\n  \"role\": \"clinician\",\n  \"facilityId\": \"{{facilityId}}\"\n}"
+            },
+            "description": "facility_admin+ | Sends invite email with set-password link"
+          }
+        },
+        {
+          "name": "Update user role",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/users/USER_ID/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"facility_admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/users/USER_ID/deactivate"
+          }
+        },
+        {
+          "name": "Activate user",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/users/USER_ID/activate"
+          }
+        },
+        {
+          "name": "Reset user password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/users/USER_ID/reset-password",
+            "description": "Sends password reset email to the user"
+          }
+        },
+        {
+          "name": "Resend invite",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/users/USER_ID/resend-invite"
+          }
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/users/USER_ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync",
+      "item": [
+        {
+          "name": "Pull from EHR",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/sync/pull",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityConnectionId\": \"CONNECTION_ID_HERE\"\n}"
+            },
+            "description": "facility_admin+ | Pulls FHIR bundle from EHR, lands records in staged_records"
+          }
+        },
+        {
+          "name": "Push to EHR",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/sync/push",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityConnectionId\": \"CONNECTION_ID_HERE\"\n}"
+            },
+            "description": "facility_admin+ | Pushes approved staged records back to EHR"
+          }
+        },
+        {
+          "name": "Simulate sync (dev only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/sync/simulate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityId\": \"{{facilityId}}\"\n}"
+            },
+            "description": "Disabled in production. Creates synthetic staged records for demo."
+          }
+        },
+        {
+          "name": "Sync logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sync/logs?page=1&pageSize=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "facility_admin+"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "List audit logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs?page=1&pageSize=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "action", "value": "PATIENT_SEARCH", "disabled": true },
+                { "key": "userId", "value": "", "disabled": true },
+                { "key": "facilityId", "value": "", "disabled": true },
+                { "key": "from", "value": "2026-01-01", "disabled": true },
+                { "key": "to", "value": "2026-12-31", "disabled": true }
+              ]
+            },
+            "description": "carevault_admin only | Full audit trail with filters"
+          }
+        }
+      ]
+    },
+    {
+      "name": "RBAC — verify 403s",
+      "description": "Run these while logged in as clinician to confirm role gates work.",
+      "item": [
+        {
+          "name": "Clinician → GET /facilities (expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/facilities"
+          }
+        },
+        {
+          "name": "Clinician → GET /audit-logs (expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/audit-logs"
+          }
+        },
+        {
+          "name": "Clinician → GET /users (expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users"
+          }
+        }
+      ]
+    }
+  ]
+}

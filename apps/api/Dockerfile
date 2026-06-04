@@ -32,6 +32,7 @@ RUN npm run db:generate -w @repo/db && \
 
 # ── Production image ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
+RUN apk add --no-cache util-linux
 WORKDIR /app
 ENV NODE_ENV=production
 

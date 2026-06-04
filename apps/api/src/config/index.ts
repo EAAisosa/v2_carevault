@@ -32,10 +32,10 @@ export const config = {
 
   appUrl: process.env["APP_URL"] ?? "http://localhost:3000",
 
-  ses: {
-    region: process.env["SES_REGION"] ?? "af-south-1",
-    fromAddress: process.env["SES_FROM_ADDRESS"] ?? "noreply@carevaultng.com",
-  },
+  // Resend API key — get one free at resend.com
+  // Leave blank in dev; emails will be logged to stdout instead.
+  resendApiKey: process.env["RESEND_API_KEY"] ?? "",
+  emailFrom: process.env["EMAIL_FROM"] ?? "noreply@carevaultng.com",
 
   isProd: process.env["NODE_ENV"] === "production",
   isDev: process.env["NODE_ENV"] === "development",
